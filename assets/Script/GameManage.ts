@@ -244,7 +244,7 @@ export class GameManage extends Component {
 
             let randomNum = Math.random() * 10;
 
-            if(randomNum < 2 ){
+            if(randomNum < 5 ){
                 this.array[ii][jj] = 4
             }else{
                 this.array[ii][jj] = 2
