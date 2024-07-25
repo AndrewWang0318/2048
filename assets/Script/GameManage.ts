@@ -1,4 +1,4 @@
-import { _decorator, Component, instantiate, LabelComponent, Node,Prefab,sys, tween, UITransform, v3, Vec3 } from 'cc';
+import { _decorator, Component, instantiate, LabelComponent, Node,NodeEventType,Prefab,sys, tween, UITransform, v3, Vec3,EventTouch, Vec2  } from 'cc';
 import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
@@ -54,12 +54,98 @@ export class GameManage extends Component {
     // 块数据数组
     private array:number[][] | null = null;
 
+    // 起始点坐标
+    private posStart:Vec2;
+    // 截至点坐标
+    private posEnd:Vec2;
+    // 游戏状态 1为游戏中 0为游戏未开始
+    private gameStatus:number = 0;
+
     init(){
         this.initPane();
         this.startMenu.active = true;
         this.getUserInfo();
         this.updateView();
+        this.addTouchEvent()
     }
+
+    // 添加点击事件
+    addTouchEvent(){
+        this.node.on(NodeEventType.TOUCH_START,this.onTouchStart,this);
+        // this.node.on(NodeEventType.TOUCH_MOVE,this.onTouchMove,this)
+        // this.node.on(NodeEventType.TOUCH_CANCEL,this.onTouchCancel,this)
+        this.node.on(NodeEventType.TOUCH_END,this.onTouchEnd,this)
+    }
+
+    // 点击开始
+    onTouchStart(event:EventTouch){
+        this.posStart = event.getLocation()
+    }
+
+    // 点击后移动
+    // onTouchMove(event:EventTouch){
+
+    // }
+
+    // 点击后取消
+    // onTouchCancel(event:EventTouch){
+
+    // }
+
+    // 点击结束
+    onTouchEnd(event:EventTouch){
+        this.posEnd = event.getLocation();
+
+        // x轴偏移量
+        const displaceX = this.posStart.x - this.posEnd.x
+        // y轴偏移量
+        const displaceY = this.posStart.y - this.posEnd.y
+
+        if(Math.abs(displaceX) < 10 && Math.abs(displaceY) < 10) return; /* 当前位移量太小 */ 
+
+        // 判断移动方向
+        if(Math.abs(displaceX) > Math.abs(displaceY)){/* x轴位移量大于y轴则为x轴方向的移动，反之同理 */ 
+            if(displaceX > 0){
+                this.blockMove('left')
+                console.log('向左')
+            }
+            if(displaceX < 0){
+                this.blockMove('right')
+                console.log('向右')
+            }
+        }else{
+            if(displaceY > 0){
+                this.blockMove('bottom')
+                console.log('向下')
+            }
+            if(displaceY < 0){
+                this.blockMove('top')
+                console.log('向上')
+            }
+        }
+    }
+
+    blockMove(key){
+        switch (key) {
+            case 'right':
+                
+                break;
+            case 'left':
+
+                break;
+            case 'top':
+                
+                break;
+            case 'bottom':
+                
+                break;
+            default:
+                break;
+        }
+    }
+
+
+
 
     private getUserInfo(){
         this.userData = JSON.parse(sys.localStorage.getItem('userInfo'));
