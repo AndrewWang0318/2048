@@ -155,22 +155,23 @@ export class GameManage extends Component {
                 //     }
                 // }
 
-
+                // y轴
                 for (let j = 0; j < this.array.length; j++) {
-
-                    for (let i = this.array.length - 2; i >= 0; i--) {
-
+                    // x轴
+                    /*let i = this.array.length - 2 ：因为当前的目标只能是边缘的前一个元素才有判断的必要 */
+                    for (let i = this.array.length - 2 ; i >= 0; i--) {
+                        
                         let k = i;
-
+                        /* this.array[j][k + 1] === 0 : 目标值的元素 */
                         while (k < this.array.length - 1 && (this.array[j][k + 1] === 0 || this.array[j][k + 1] === this.array[j][k])) {
 
-                            if (this.array[j][k + 1] === 0) {
+                            if (this.array[j][k + 1] === 0) { // 代表目标值为0; 则可以移动
 
                                 this.array[j][k + 1] = this.array[j][k];
                                 this.array[j][k] = 0;
                                 k++;
                                 canMove = true;
-                            } else if (this.array[j][k + 1] === this.array[j][k]) {
+                            } else if (this.array[j][k + 1] === this.array[j][k]) { // 代表目标值等于当前值; 则可以合成并移动
 
                                 this.array[j][k + 1] *= 2;
                                 this.array[j][k] = 0;
@@ -261,17 +262,37 @@ export class GameManage extends Component {
     }
 
     // 创建所有块图形
-    createAllBlock(){
+    private createAllBlock(){
         for (let i = 0; i < this.array.length; i++) {
             for (let j = 0; j < this.array[i].length; j++) {
-                if(this.array[i][j] > 0 ){
+                if(this.array[i][j]>0){
                     const pos = new Vec3(i,j,0);
                     this.createBlock(pos,this.array[i][j],true);
                 }
             }
         }
     }
-
+    // 生成数字块
+    private createBlock(pos:Vec3,num:number,isAction:boolean = false){
+        const posStart = new Vec3(-this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, - this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, 0);
+        let block = instantiate(this.block); // 实例化block预制体
+        let tile = block.getComponent(Tile);
+        if(tile) tile.init(num); // 执行tile预制体方法
+        block.parent = this.ndParent
+        // 设置blockUI形态
+        let blockUI:UITransform = block.getComponent(UITransform);
+        blockUI.width = this.blockWH;
+        blockUI.height = this.blockWH;
+        // 设置block坐标
+        const x = posStart.x + (blockUI.width + this.gap) * pos.y;
+        const y = posStart.x + (blockUI.width + this.gap) * pos.x;
+        block.position = new Vec3(x,y,0);
+        // 是否播放动画
+        if(isAction){
+            block.scale = v3(0,0,0);
+            tween(block).to(0.15,{scale:v3(1,1,1)},{easing:"sineInOut"}).start()
+        }
+    }
     // 删除所有块图形
     clearAllBlock(){
         let children = this.ndParent.children;
@@ -403,36 +424,7 @@ export class GameManage extends Component {
         }
     }
 
-    // 生成数字块
-    private createBlock(pos:Vec3,num:number,isAction:boolean = false){
-
-        const posStart = new Vec3(-this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, - this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, 0);
-        let block = instantiate(this.block);
-        let tile = block.getComponent(Tile)
-        if(tile){
-            tile.init(num)
-        }
-        block.parent = this.ndParent
-
-        let blockTf:UITransform = block.getComponent(UITransform);
-
-        blockTf.width = this.blockWH;
-        blockTf.height = this.blockWH;
-
-
-        let _x = posStart.x + (blockTf.width + this.gap) * pos.y;
-        let _y = posStart.x + (blockTf.width + this.gap) * pos.x;
-
-
-        block.position = new Vec3(_x,_y,0);
-
-
-        if(isAction){
-            block.scale = v3(0,0,0);
-
-            tween(block).to(0.15,{scale:v3(1,1,1)},{easing:"sineInOut"}).start()
-        }
-    }
+    
 
     // 初始化面板
     initPanel(){
