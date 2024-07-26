@@ -3,7 +3,7 @@ import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
 
-
+// 用户本地数据接口
 interface userData {
     lv:number,
     score:number,
@@ -12,6 +12,14 @@ interface userData {
 
     array:  number[][],
     arrHistory: number[]
+}
+
+// 移动枚举类型
+enum MoveType {
+    top,
+    bottom,
+    left,
+    right,
 }
 
 @ccclass('GameManage')
@@ -52,7 +60,7 @@ export class GameManage extends Component {
     private blockPraentWH:number = 0;
 
     // 块数据数组
-    private array:number[][] | null = null;
+    private array:number[][] = [];
 
     // 起始点坐标
     private posStart:Vec2;
@@ -61,39 +69,34 @@ export class GameManage extends Component {
     // 游戏状态 1为游戏中 0为游戏未开始
     private gameStatus:number = 0;
 
-    init(){
-        this.initPane();
+    
+    start() {
+        this.initPanel();
         this.startMenu.active = true;
-        this.getUserInfo();
-        this.updateView();
         this.addTouchEvent()
     }
 
+
+    private init(){
+        this.getUserInfo();
+        this.updateView();
+    }
+
     // 添加点击事件
-    addTouchEvent(){
+    private addTouchEvent(){
         this.node.on(NodeEventType.TOUCH_START,this.onTouchStart,this);
-        // this.node.on(NodeEventType.TOUCH_MOVE,this.onTouchMove,this)
-        // this.node.on(NodeEventType.TOUCH_CANCEL,this.onTouchCancel,this)
         this.node.on(NodeEventType.TOUCH_END,this.onTouchEnd,this)
     }
 
     // 点击开始
-    onTouchStart(event:EventTouch){
+    private onTouchStart(event:EventTouch){
+        if(!this.gameStatus) return;
         this.posStart = event.getLocation()
     }
 
-    // 点击后移动
-    // onTouchMove(event:EventTouch){
-
-    // }
-
-    // 点击后取消
-    // onTouchCancel(event:EventTouch){
-
-    // }
-
     // 点击结束
-    onTouchEnd(event:EventTouch){
+    private onTouchEnd(event:EventTouch){
+        if(!this.gameStatus) return;
         this.posEnd = event.getLocation();
 
         // x轴偏移量
@@ -105,45 +108,102 @@ export class GameManage extends Component {
 
         // 判断移动方向
         if(Math.abs(displaceX) > Math.abs(displaceY)){/* x轴位移量大于y轴则为x轴方向的移动，反之同理 */ 
-            if(displaceX > 0){
-                this.blockMove('left')
-                console.log('向左')
-            }
             if(displaceX < 0){
-                this.blockMove('right')
+                this.blockMove(MoveType.right)
                 console.log('向右')
             }
-        }else{
-            if(displaceY > 0){
-                this.blockMove('bottom')
-                console.log('向下')
+            if(displaceX > 0){
+                this.blockMove(MoveType.left)
+                console.log('向左')
             }
+        }else{
+            
             if(displaceY < 0){
-                this.blockMove('top')
+                this.blockMove(MoveType.top)
                 console.log('向上')
+            }
+            if(displaceY > 0){
+                this.blockMove(MoveType.bottom)
+                console.log('向下')
             }
         }
     }
 
-    blockMove(key){
+    private blockMove(key:MoveType){
+        
+
+        let canMove:boolean = false; // 是否可移动
         switch (key) {
-            case 'right':
-                
+            case MoveType.right:               
+                // 用于表示除最后一列的每一列
+                for (let i = this.array.length - 2; i >= 0; i--) {
+                    
+                    // 用于表示除最后一列的每一个值
+                    for (let j = 0; j < this.array.length; j++) {
+                        // 用于表示除最后一列的每一个值的全部可能性
+                        for (let k = 0; k < this.array.length; k++) {
+                            // j + k < this.array.length - 1 用于比对的全部可能性 必须小于数组最大长度-1
+                            // 代表向右的下一个没有值则可移动
+                            if(j + k < this.array.length - 1 && this.array[i][j+k] > 0 && this.array[i][i+k+1] === 0){
+                                this.array[i][j+k+1] = this.array[i][j+k];
+                                this.array[i][j+k] = 0
+                                canMove = true;
+                            }
+                            // 代表向右的下一个没有值且与当前值相当则可移动并且和合成
+                            if(j + k < this.array.length - 1 && this.array[i+k] === this.array[i+k+1] && this.array[i][i+k+1] === 0){
+                                this.array[i][j+k+1] = this.array[i][j+k] * 2
+                                this.array[i][j+k] = 0;
+                                canMove = true;
+                            }
+                        }
+                    }
+                }
                 break;
-            case 'left':
+            case MoveType.left:
 
                 break;
-            case 'top':
+            case MoveType.top:
                 
                 break;
-            case 'bottom':
+            case MoveType.bottom:
                 
                 break;
             default:
                 break;
         }
+        if(canMove){
+            this.clearAllBlock();
+            for (let i = 0; i < this.array.length; i++) {
+                for (let j = 0; j < this.array[i].length; j++) {
+                    if(this.array[i][j] > 0 ){
+                        const pos = new Vec3(i,j,0);
+                        this.createBlock(pos,this.array[i][j]);
+                    }
+                }
+            }
+
+            this.addRandomArray();
+        }
     }
 
+
+    // 删除所有块图形
+    clearAllBlock(){
+        let children = this.ndParent.children;
+        // for (let i = 0; i < children.length - 1; i++) {
+        //     let tile = children[i].getComponent(Tile)
+        //     if(tile){
+        //         this.ndParent.removeChild(children[i])
+        //     }
+        // }
+
+        for (let i = this.array.length - 1; i >= 0; i--) {
+            let tile = children[i].getComponent(Tile)
+            if(tile){
+                this.ndParent.removeChild(children[i])
+            }
+        }
+    }
 
 
 
@@ -190,10 +250,21 @@ export class GameManage extends Component {
         this.txtBestScore.string = this.userData.bestScore.toString()
         this.txtBackNum.string = '撤回(' + this.userData.backNum.toString() + ')'
 
-
-        this.initArray(lv)
-
-        this.addRandomArray();
+        if(this.userData.array.length === 0){
+            this.initArray(lv);
+            this.addRandomArray();
+        }else{
+            this.array = this.userData.array;
+            for (let i = 0; i < this.array.length; i++) {
+                for (let j = 0; j < this.array.length; j++) {
+                    if(this.array[i][j] > 0){
+                        const pos = new Vec3(i,j,0)
+                        this.createBlock(pos,this.array[i][j])
+                    }
+                }
+            }
+        }
+        
     }
     
     // 初始数组
@@ -255,6 +326,7 @@ export class GameManage extends Component {
     }
     // 生成块
     private createBlock(pos:Vec3,num:number,isAction:boolean = false){
+
         const posStart = new Vec3(-this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, - this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, 0);
         let block = instantiate(this.block);
         let tile = block.getComponent(Tile)
@@ -286,7 +358,7 @@ export class GameManage extends Component {
 
     
 
-    initPane(){
+    initPanel(){
         this.startMenu.active = false;
         this.gamePlane.active = false;
         this.endMenu.active = false;
@@ -294,13 +366,16 @@ export class GameManage extends Component {
 
     // 开始游戏
     startGame(){
-        this.initPane();
+        this.initPanel();
         this.gamePlane.active = true;
+        this.init();
+
+        this.gameStatus = 1;
     }
 
     // 返回主菜单
     backMain(){
-        this.initPane();
+        this.initPanel();
         this.startMenu.active = true;
     }
 
@@ -314,9 +389,7 @@ export class GameManage extends Component {
 
     }
 
-    start() {
-        this.init();
-    }
+    
 
     update(deltaTime: number) {
         
