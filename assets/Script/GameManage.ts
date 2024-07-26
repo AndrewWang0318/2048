@@ -69,20 +69,20 @@ export class GameManage extends Component {
     // 游戏状态 1为游戏中 0为游戏未开始
     private gameStatus:number = 0;
 
-    
+    // 游戏开始的回调
     start() {
         this.initPanel();
         this.startMenu.active = true;
         this.addTouchEvent()
     }
 
-
+    // 初始化
     private init(){
         this.getUserInfo();
         this.updateView();
     }
 
-    // 添加点击事件
+    // 添加需要绑定的事件
     private addTouchEvent(){
         this.node.on(NodeEventType.TOUCH_START,this.onTouchStart,this);
         this.node.on(NodeEventType.TOUCH_END,this.onTouchEnd,this)
@@ -98,14 +98,9 @@ export class GameManage extends Component {
     private onTouchEnd(event:EventTouch){
         if(!this.gameStatus) return;
         this.posEnd = event.getLocation();
-
-        // x轴偏移量
-        const displaceX = this.posStart.x - this.posEnd.x
-        // y轴偏移量
-        const displaceY = this.posStart.y - this.posEnd.y
-
-        if(Math.abs(displaceX) < 10 && Math.abs(displaceY) < 10) return; /* 当前位移量太小 */ 
-
+        const displaceX = this.posStart.x - this.posEnd.x // x轴偏移量
+        const displaceY = this.posStart.y - this.posEnd.y // y轴偏移量
+        if(Math.abs(displaceX) < 10 && Math.abs(displaceY) < 10) return; // 当前位移量太小
         // 判断移动方向
         if(Math.abs(displaceX) > Math.abs(displaceY)){/* x轴位移量大于y轴则为x轴方向的移动，反之同理 */ 
             if(displaceX < 0){
@@ -117,7 +112,6 @@ export class GameManage extends Component {
                 console.log('向左')
             }
         }else{
-            
             if(displaceY < 0){
                 this.blockMove(MoveType.top)
                 console.log('向上')
@@ -129,84 +123,168 @@ export class GameManage extends Component {
         }
     }
 
+    // 判断数字块移动的逻辑
     private blockMove(key:MoveType){
-        
-
         let canMove:boolean = false; // 是否可移动
+
+        let isGetScore:boolean = false; // 是否已得分
+
         switch (key) {
             case MoveType.right:               
                 // 用于表示除最后一列的每一列
-                for (let i = this.array.length - 2; i >= 0; i--) {
-                    
-                    // 用于表示除最后一列的每一个值
-                    for (let j = 0; j < this.array.length; j++) {
-                        // 用于表示除最后一列的每一个值的全部可能性
-                        for (let k = 0; k < this.array.length; k++) {
-                            // j + k < this.array.length - 1 用于比对的全部可能性 必须小于数组最大长度-1
-                            // 代表向右的下一个没有值则可移动
-                            if(j + k < this.array.length - 1 && this.array[i][j+k] > 0 && this.array[i][i+k+1] === 0){
-                                this.array[i][j+k+1] = this.array[i][j+k];
-                                this.array[i][j+k] = 0
+                // for (let i = this.array.length - 2; i >= 0; i--) {
+                //     // 用于表示除最后一列的每一个值
+                //     for (let j = 0; j < this.array.length; j++) {
+                //         // 用于表示除最后一列的每一个值的全部可能性
+                //         for (let k = 0; k < this.array.length; k++) {
+                //             // j + k < this.array.length - 1 用于比对的全部可能性 必须小于数组最大长度-1
+                //             // 代表向右的下一个没有值则可移动
+                //             if(i + k < this.array.length - 1 && this.array[j][i+k] > 0 && this.array[j][i+k+1] === 0){
+                //                 this.array[j][i+k+1] = this.array[j][i+k];
+                //                 this.array[j][i+k] = 0
+                //                 canMove = true;
+                //             }else if(i + k < this.array.length - 1 && this.array[j][i+k] > 0 && this.array[j][i+k] === this.array[j][i+k+1]){
+                //                 // 代表向右的下一个没有值且与当前值相当则可移动并且和合成
+                //                 this.array[j][i+k+1] = this.array[j][i+k+1] * 2
+                //                 this.array[j][i+k] = 0;
+                //                 canMove = true;
+                //                 isGetScore = true;
+                //                 this.updateScore()
+                //             }
+                //         }
+                //     }
+                // }
+
+
+                for (let j = 0; j < this.array.length; j++) {
+
+                    for (let i = this.array.length - 2; i >= 0; i--) {
+
+                        let k = i;
+
+                        while (k < this.array.length - 1 && (this.array[j][k + 1] === 0 || this.array[j][k + 1] === this.array[j][k])) {
+
+                            if (this.array[j][k + 1] === 0) {
+
+                                this.array[j][k + 1] = this.array[j][k];
+                                this.array[j][k] = 0;
+                                k++;
                                 canMove = true;
-                            }
-                            // 代表向右的下一个没有值且与当前值相当则可移动并且和合成
-                            if(j + k < this.array.length - 1 && this.array[i+k] === this.array[i+k+1] && this.array[i][i+k+1] === 0){
-                                this.array[i][j+k+1] = this.array[i][j+k] * 2
-                                this.array[i][j+k] = 0;
+                            } else if (this.array[j][k + 1] === this.array[j][k]) {
+
+                                this.array[j][k + 1] *= 2;
+                                this.array[j][k] = 0;
                                 canMove = true;
+                                isGetScore = true;
+                                this.updateScore();
+                                break;
                             }
                         }
                     }
                 }
                 break;
             case MoveType.left:
-
+                for (let i = 1; i < this.array.length; i++) {
+                    // 用于表示除最后一列的每一个值
+                    for (let j = 0; j < this.array[i].length; j++) {
+                        // 用于表示除最后一列的每一个值的全部可能性
+                        for (let k = 0; k < this.array.length; k++) {
+                            // j + k < this.array.length - 1 用于比对的全部可能性 必须小于数组最大长度-1
+                            // 代表向右的下一个没有值则可移动
+                            if(i - k >= 1 && this.array[j][i-k] > 0 && this.array[j][i-k-1] === 0){
+                                this.array[j][i-k-1] = this.array[j][i-k];
+                                this.array[j][i-k] = 0
+                                canMove = true;
+                            }else if(i - k >= 1 && this.array[j][i-k] > 0 && this.array[j][i-k] === this.array[j][i-k-1]){
+                                // 代表向右的下一个没有值且与当前值相当则可移动并且和合成
+                                this.array[j][i-k-1] = this.array[j][i-k-1] * 2
+                                this.array[j][i-k] = 0;
+                                canMove = true;
+                                isGetScore = true;
+                                this.updateScore()
+                            }
+                        }
+                    }
+                }
                 break;
             case MoveType.top:
-                
+                // for (let i = this.array.length - 2; i >= 0; i--) {
+                //     for (let j = 0; j < this.array[i].length; j++) {
+                //         for (let k = 0; k < this.array.length; k++) {
+                //             if(i + k < this.array.length - 1 && this.array[i+k][j] > 0 && this.array[i+k+1][j] === 0){
+                //                 this.array[i+k+1][j] = this.array[i+k][j];
+                //                 this.array[i+k][j] = 0;
+                //                 canMove = true;
+                //             }else if(i + k < this.array.length - 1 && this.array[i+k][j] > 0 && this.array[i+k][j] === this.array[i+k+1][j]){
+                //                 this.array[i+k+1][j] = this.array[i+k+1][j] * 2;
+                //                 this.array[i+k][j] = 0;
+                //                 canMove = true;
+                //                 isGetScore = true;
+                //                 this.updateScore();
+                //             }
+                //         }
+                //     }
+                // }
                 break;
             case MoveType.bottom:
-                
+                // for (let i = 1; i < this.array.length; i++) {
+                //     for (let j = 0; j < this.array[i].length; j++) {
+                //         for (let k = 0; k < this.array.length; k++) {
+                //             if(i - k >=  1 && this.array[i-1-k][j] > 0 && this.array[i-k][j] === 0){
+                //                 this.array[i-k-1][j] = this.array[i-k][j];
+                //                 this.array[i-k][j] = 0
+                //                 canMove = true;
+                //             }else if(i - k >=  1 && this.array[i-k][j] > 0 && this.array[i-k][j] === this.array[i-k-1][j]){
+                //                 this.array[i-k-1][j] = this.array[i-k-1][j] * 2
+                //                 this.array[i-k][j] = 0;
+                //                 canMove = true;
+                //                 isGetScore = true;
+                //                 this.updateScore()
+                //             }
+                //         }
+                //     }
+                // }
+
+
                 break;
             default:
                 break;
         }
         if(canMove){
             this.clearAllBlock();
-            for (let i = 0; i < this.array.length; i++) {
-                for (let j = 0; j < this.array[i].length; j++) {
-                    if(this.array[i][j] > 0 ){
-                        const pos = new Vec3(i,j,0);
-                        this.createBlock(pos,this.array[i][j]);
-                    }
-                }
-            }
-
+            this.createAllBlock();
             this.addRandomArray();
+        }
+        if(isGetScore){
+
         }
     }
 
+    // 创建所有块图形
+    createAllBlock(){
+        for (let i = 0; i < this.array.length; i++) {
+            for (let j = 0; j < this.array[i].length; j++) {
+                if(this.array[i][j] > 0 ){
+                    const pos = new Vec3(i,j,0);
+                    this.createBlock(pos,this.array[i][j],true);
+                }
+            }
+        }
+    }
 
     // 删除所有块图形
     clearAllBlock(){
         let children = this.ndParent.children;
-        // for (let i = 0; i < children.length - 1; i++) {
-        //     let tile = children[i].getComponent(Tile)
-        //     if(tile){
-        //         this.ndParent.removeChild(children[i])
-        //     }
-        // }
-
-        for (let i = this.array.length - 1; i >= 0; i--) {
-            let tile = children[i].getComponent(Tile)
+        for (let i = children.length - 1; i >= 0; i--) {
+            let child = children[i]
+            let tile = child.getComponent(Tile);
             if(tile){
-                this.ndParent.removeChild(children[i])
+                this.ndParent.removeChild(child)
             }
         }
     }
 
-
-
+    // 获取本地用户信息
     private getUserInfo(){
         this.userData = JSON.parse(sys.localStorage.getItem('userInfo'));
         if(!this.userData){
@@ -220,14 +298,14 @@ export class GameManage extends Component {
                 arrHistory:[]
             }
         }
-
-
     }
 
+    // 保存本地用户信息
     private setUserInfo(){
         sys.localStorage.setItem('userInfo',JSON.stringify(this.userData))
     }
 
+    // 刷新视图
     private updateView(){
         const lv = this.userData.lv
         this.gap = 5;
@@ -255,18 +333,16 @@ export class GameManage extends Component {
             this.addRandomArray();
         }else{
             this.array = this.userData.array;
-            for (let i = 0; i < this.array.length; i++) {
-                for (let j = 0; j < this.array.length; j++) {
-                    if(this.array[i][j] > 0){
-                        const pos = new Vec3(i,j,0)
-                        this.createBlock(pos,this.array[i][j])
-                    }
-                }
-            }
+            this.createAllBlock();
         }
         
     }
     
+    // 刷新得分
+    private updateScore(){
+
+    }
+
     // 初始数组
     initArray(lv:number){
         this.array = []
@@ -277,6 +353,7 @@ export class GameManage extends Component {
             }
         }
     }
+
     // 添加背景块
     addBlockBg(lv:number){
         const posStart = new Vec3(-this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, - this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, 0);
@@ -296,6 +373,7 @@ export class GameManage extends Component {
             }
         }
     }
+
     // 添加随机数组
     private addRandomArray(){
         let arrEmpty = [];
@@ -315,16 +393,17 @@ export class GameManage extends Component {
 
             let randomNum = Math.random() * 10;
 
-            if(randomNum < 5 ){
+            if(randomNum < 2 ){
                 this.array[ii][jj] = 4
             }else{
                 this.array[ii][jj] = 2
             }
 
-            this.createBlock(arrEmpty[pos],this.array[ii][jj],)
+            this.createBlock(arrEmpty[pos],this.array[ii][jj],true)
         }
     }
-    // 生成块
+
+    // 生成数字块
     private createBlock(pos:Vec3,num:number,isAction:boolean = false){
 
         const posStart = new Vec3(-this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, - this.blockPraentWH / 2 + this.blockWH / 2 + this.gap, 0);
@@ -355,9 +434,7 @@ export class GameManage extends Component {
         }
     }
 
-
-    
-
+    // 初始化面板
     initPanel(){
         this.startMenu.active = false;
         this.gamePlane.active = false;
@@ -388,8 +465,6 @@ export class GameManage extends Component {
     retreat(){
 
     }
-
-    
 
     update(deltaTime: number) {
         
