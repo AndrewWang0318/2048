@@ -12,6 +12,9 @@ enum MoveDirect {
 @ccclass('GameManage')
 export class GameManage extends Component {
 
+    @property(Node)
+    startMenu:Node;
+
 
     isGameStarting:boolean = true; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
@@ -19,12 +22,20 @@ export class GameManage extends Component {
 
     start() {
         this.addEventListener();
+
+        this.startMenu.active = true;
     }
 
     init(){
 
     }
     
+
+    startGame(){
+        this.startMenu.active = false;
+    }
+
+
     // 添加事件监听
     private addEventListener(){
         this.node.on(NodeEventType.TOUCH_START,this.onTouchStart,this);
