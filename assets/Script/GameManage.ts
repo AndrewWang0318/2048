@@ -1,4 +1,4 @@
-import { _decorator, Component, EventTouch, Node, NodeEventType, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, UITransform, Vec2, Vec3 } from 'cc';
 const { ccclass, property } = _decorator;
 
 enum MoveDirect {
@@ -11,28 +11,41 @@ enum MoveDirect {
 
 @ccclass('GameManage')
 export class GameManage extends Component {
-
+    // 开始菜单
     @property(Node)
-    startMenu:Node;
+    StartMenu:Node;
+    // 设置菜单
     @property(Node)
-    settingMenu:Node;
+    SettingMenu:Node;
+    // 块 容器
+    @property(Node)
+    TileMap:Node;
+    // 块 预制体
+    @property(Prefab)
+    Tile:Prefab;
+    // 空白块 预制体
+    @property(Prefab)
+    Road:Prefab;
 
-    isGameStarting:boolean = true; // 游戏是否已经开始
+    private isGameStarting:boolean = true; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
     private posEnd:Vec2; // 结束点
 
-    tileNums:number = 4;
-    tilesData:(number | null)[][] = [];
-
+    tileNums:number = 4; // 容器容纳块数量
+    tileMargin:number = 10; // 块间隔
+    tilesData:(number | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
     start() {
         this.addEventListener();
 
-        this.startMenu.active = true;
-        this.settingMenu.active = false;
+        this.StartMenu.active = true;
+        this.SettingMenu.active = false;
+
+        this.init()
     }
 
     init(){
-
+        this.initTileMap();
+        this.renderTileMap();
     }
     
     // 初始化方块地图
@@ -49,30 +62,52 @@ export class GameManage extends Component {
 
     // 渲染方块地图
     renderTileMap(){
+        const tile = instantiate(this.Road);
+        const tileUI:UITransform = tile.getComponent(UITransform);
+        const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
 
+        const tileMapWidth = tileMapUI.width; 
+        const tileMargin = this.tileMargin;
+        const tileWidth = (tileMapWidth - tileMargin * ( this.tileNums - 1 )) / this.tileNums
+
+        tileUI.width = tileWidth;
+        tileUI.height = tileWidth;
+
+        let tilePos = new Vec3(0,0,0);
+        console.log(tileWidth)
+
+        // for (let i = 0; i < this.tileNums; i++) {
+        //     this.tilesData.push([])
+        //     for (let j = 0; j < this.tileNums; j++) {
+        //         this.tilesData[i].push(null)
+        //     }
+        // }
+
+        tile.position = tilePos
+        tile.parent = this.TileMap
     }
 
     // 开始游戏
     startGame(){
-        this.startMenu.active = false;
+        this.StartMenu.active = false;
     }
 
     // 打开游戏设置
     openGameSetting(){
-        this.settingMenu.active = true;
+        this.SettingMenu.active = true;
     }
 
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
         this.tileNums = customEventData;
         console.log(customEventData,evt.type)
-        this.settingMenu.active = false;
+        this.SettingMenu.active = false;
     }
 
 
     // 返回游戏
     backGame(){
-        this.settingMenu.active = false;
+        this.SettingMenu.active = false;
     }
 
 
