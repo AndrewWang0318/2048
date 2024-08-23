@@ -14,25 +14,65 @@ export class GameManage extends Component {
 
     @property(Node)
     startMenu:Node;
-
+    @property(Node)
+    settingMenu:Node;
 
     isGameStarting:boolean = true; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
     private posEnd:Vec2; // 结束点
 
+    tileNums:number = 4;
+    tilesData:(number | null)[][] = [];
+
     start() {
         this.addEventListener();
 
         this.startMenu.active = true;
+        this.settingMenu.active = false;
     }
 
     init(){
 
     }
     
+    // 初始化方块地图
+    initTileMap(){
+        this.tilesData = [];
 
+        for (let i = 0; i < this.tileNums; i++) {
+            this.tilesData.push([])
+            for (let j = 0; j < this.tileNums; j++) {
+                this.tilesData[i].push(null)
+            }
+        }
+    }
+
+    // 渲染方块地图
+    renderTileMap(){
+
+    }
+
+    // 开始游戏
     startGame(){
         this.startMenu.active = false;
+    }
+
+    // 打开游戏设置
+    openGameSetting(){
+        this.settingMenu.active = true;
+    }
+
+    // 切换游戏类型
+    changeGameType(evt:EventTouch,customEventData:number){
+        this.tileNums = customEventData;
+        console.log(customEventData,evt.type)
+        this.settingMenu.active = false;
+    }
+
+
+    // 返回游戏
+    backGame(){
+        this.settingMenu.active = false;
     }
 
 
