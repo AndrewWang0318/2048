@@ -1,4 +1,5 @@
 import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, UITransform, Vec2, Vec3 } from 'cc';
+import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
 enum MoveDirect {
@@ -7,7 +8,6 @@ enum MoveDirect {
     UP,
     DOWN
 }
-
 
 @ccclass('GameManage')
 export class GameManage extends Component {
@@ -51,7 +51,6 @@ export class GameManage extends Component {
     // 初始化方块地图
     initTileMap(){
         this.tilesData = [];
-
         for (let i = 0; i < this.tileNums; i++) {
             this.tilesData.push([])
             for (let j = 0; j < this.tileNums; j++) {
@@ -62,7 +61,6 @@ export class GameManage extends Component {
 
     // 渲染方块地图
     renderTileMap(){
-
         const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
         // 块容器宽度
         const tileMapWidth = tileMapUI.width; 
@@ -75,17 +73,29 @@ export class GameManage extends Component {
         const startY = tileMapWidth / 2 - tileWidth / 2 - tileMargin;
         const startPos =  new Vec3( startX, startY, 0); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
         // 初始化
-        for (let i = 0; i < this.tileNums; i++) {
-            for (let j = 0; j < this.tileNums; j++) {
-                const tile = instantiate(this.Road);
-                const tileUI:UITransform = tile.getComponent(UITransform);
-                tileUI.width = tileWidth;
-                tileUI.height = tileWidth;
-                const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
-
-
-                tile.position = tilePos
-                tile.parent = this.TileMap
+        for (let i = 0; i < this.tilesData.length; i++) {
+            for (let j = 0; j < this.tilesData[i].length; j++) {
+                const num = this.tilesData[i][j];
+                // null 为空白格的情况,否则为格的情况
+                if(num == null){
+                    const node = instantiate(this.Road);
+                    const tileUI:UITransform = node.getComponent(UITransform);
+                    tileUI.width = tileWidth;
+                    tileUI.height = tileWidth;
+                    const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
+                    node.position = tilePos;
+                    node.parent = this.TileMap;
+                }else{
+                    const node = instantiate(this.Tile);
+                    const tile =  node.getComponent(Tile)
+                    tile.init(num)
+                    const tileUI:UITransform = node.getComponent(UITransform);
+                    tileUI.width = tileWidth;
+                    tileUI.height = tileWidth;
+                    const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
+                    node.position = tilePos;
+                    node.parent = this.TileMap;
+                }
             }
         }
     }
