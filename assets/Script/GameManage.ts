@@ -32,7 +32,7 @@ export class GameManage extends Component {
     private posEnd:Vec2; // 结束点
 
     tileNums:number = 4; // 容器容纳块数量
-    tileMargin:number = 10; // 块间隔
+    tileMargin:number = 16; // 块间隔
     tilesData:(number | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
     start() {
         this.addEventListener();
@@ -62,29 +62,32 @@ export class GameManage extends Component {
 
     // 渲染方块地图
     renderTileMap(){
-        const tile = instantiate(this.Road);
-        const tileUI:UITransform = tile.getComponent(UITransform);
+
         const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
-
+        // 块容器宽度
         const tileMapWidth = tileMapUI.width; 
+        // 块边距
         const tileMargin = this.tileMargin;
-        const tileWidth = (tileMapWidth - tileMargin * ( this.tileNums - 1 )) / this.tileNums
+        // 块宽度
+        const tileWidth = (tileMapWidth - tileMargin * ( this.tileNums + 1 )) / this.tileNums
+        // 起始点坐标
+        const startX = - tileMapWidth / 2 + tileWidth / 2 + tileMargin;
+        const startY = tileMapWidth / 2 - tileWidth / 2 - tileMargin;
+        const startPos =  new Vec3( startX, startY, 0); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
+        // 初始化
+        for (let i = 0; i < this.tileNums; i++) {
+            for (let j = 0; j < this.tileNums; j++) {
+                const tile = instantiate(this.Road);
+                const tileUI:UITransform = tile.getComponent(UITransform);
+                tileUI.width = tileWidth;
+                tileUI.height = tileWidth;
+                const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
 
-        tileUI.width = tileWidth;
-        tileUI.height = tileWidth;
 
-        let tilePos = new Vec3(0,0,0);
-        console.log(tileWidth)
-
-        // for (let i = 0; i < this.tileNums; i++) {
-        //     this.tilesData.push([])
-        //     for (let j = 0; j < this.tileNums; j++) {
-        //         this.tilesData[i].push(null)
-        //     }
-        // }
-
-        tile.position = tilePos
-        tile.parent = this.TileMap
+                tile.position = tilePos
+                tile.parent = this.TileMap
+            }
+        }
     }
 
     // 开始游戏
@@ -100,16 +103,19 @@ export class GameManage extends Component {
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
         this.tileNums = customEventData;
-        console.log(customEventData,evt.type)
         this.SettingMenu.active = false;
     }
-
 
     // 返回游戏
     backGame(){
         this.SettingMenu.active = false;
     }
 
+    // 返回主页面
+    backHome(){
+        this.SettingMenu.active = false;
+        this.StartMenu.active = true;
+    }
 
     // 添加事件监听
     private addEventListener(){
