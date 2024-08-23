@@ -40,7 +40,7 @@ export class GameManage extends Component {
         this.StartMenu.active = true;
         this.SettingMenu.active = false;
 
-        this.init()
+        this.init();
     }
 
     init(){
@@ -57,6 +57,11 @@ export class GameManage extends Component {
                 this.tilesData[i].push(null)
             }
         }
+    }
+
+    // 随机生成块
+    randomTile(){
+        
     }
 
     // 渲染方块地图
