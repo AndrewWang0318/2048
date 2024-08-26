@@ -32,20 +32,39 @@ export class GameManage extends Component {
     private posEnd:Vec2; // 结束点
 
     tileNums:number = 4; // 容器容纳块数量
-    tileMargin:number = 16; // 块间隔
     tilesData:(number | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
+    tileMargin:number = 16; // 块间隔
+    tileWidth:number; // 格子的宽度
+    startPos:Vec3; // 起始点坐标
+
     start() {
         this.addEventListener();
-
         this.StartMenu.active = true;
         this.SettingMenu.active = false;
 
         this.init();
     }
 
-    init(){
+    // 重新开始
+    reStart(){
         this.initTileMap();
         this.renderTileMap();
+        this.randomTile();
+
+        this.saveStorage();
+    }
+
+    // 初始化
+    init(){
+        const tilesData:string = localStorage.getItem('tilesData')
+        if(tilesData){
+            this.tilesData = JSON.parse(tilesData)
+            this.renderTileMap();
+        }else{
+            this.initTileMap();
+            this.randomTile();
+        }
+        
     }
     
     // 初始化方块地图
@@ -59,24 +78,18 @@ export class GameManage extends Component {
         }
     }
 
-    // 随机生成块
-    randomTile(){
-        
-    }
-
     // 渲染方块地图
     renderTileMap(){
         const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
         // 块容器宽度
         const tileMapWidth = tileMapUI.width; 
-        // 块边距
-        const tileMargin = this.tileMargin;
         // 块宽度
-        const tileWidth = (tileMapWidth - tileMargin * ( this.tileNums + 1 )) / this.tileNums
+        this.tileWidth = (tileMapWidth - this.tileMargin * ( this.tileNums + 1 )) / this.tileNums
         // 起始点坐标
-        const startX = - tileMapWidth / 2 + tileWidth / 2 + tileMargin;
-        const startY = tileMapWidth / 2 - tileWidth / 2 - tileMargin;
-        const startPos =  new Vec3( startX, startY, 0); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
+        const startX = - tileMapWidth / 2 + this.tileWidth / 2 + this.tileMargin;
+        const startY = tileMapWidth / 2 - this.tileWidth / 2 - this.tileMargin;
+        this.startPos = new Vec3( startX, startY, 0); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
+        
         // 初始化
         for (let i = 0; i < this.tilesData.length; i++) {
             for (let j = 0; j < this.tilesData[i].length; j++) {
@@ -85,9 +98,9 @@ export class GameManage extends Component {
                 if(num == null){
                     const node = instantiate(this.Road);
                     const tileUI:UITransform = node.getComponent(UITransform);
-                    tileUI.width = tileWidth;
-                    tileUI.height = tileWidth;
-                    const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
+                    tileUI.width = this.tileWidth;
+                    tileUI.height = this.tileWidth;
+                    const tilePos = new Vec3(this.startPos.x + this.tileWidth * i + this.tileMargin * i, this.startPos.y - this.tileWidth * j - this.tileMargin * j, 0);
                     node.position = tilePos;
                     node.parent = this.TileMap;
                 }else{
@@ -95,14 +108,49 @@ export class GameManage extends Component {
                     const tile =  node.getComponent(Tile)
                     tile.init(num)
                     const tileUI:UITransform = node.getComponent(UITransform);
-                    tileUI.width = tileWidth;
-                    tileUI.height = tileWidth;
-                    const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
+                    tileUI.width = this.tileWidth;
+                    tileUI.height = this.tileWidth;
+                    const tilePos = new Vec3(this.startPos.x + this.tileWidth * i + this.tileMargin * i, this.startPos.y - this.tileWidth * j - this.tileMargin * j, 0);
                     node.position = tilePos;
                     node.parent = this.TileMap;
                 }
             }
         }
+    }
+
+    // 随机生成块
+    randomTile(){
+        const isDouble = Math.floor(Math.random() * 2); // 是否生成一个双倍大小的数字
+        const num = isDouble === 1 ? 4 : 2; // 生成的数字大小
+
+        const roadArr = []; // 空白格的下标
+        this.tilesData.forEach( (arr,idx) => {
+            arr.forEach((v,i) => {
+                if(v === null){
+                    roadArr.push(new Vec2(idx,i));
+                }
+            })
+        });
+
+        const roadIdx = Math.floor(Math.random() * roadArr.length); // 空白格下标
+        const roadPos = roadArr[roadIdx]; // 随机的空白格子的坐标
+
+        this.tilesData[roadPos.x][roadPos.y] = num; // 将目标的空白格重新赋值
+
+        const node = instantiate(this.Tile);
+        const tile =  node.getComponent(Tile)
+        tile.init(num)
+        const tileUI:UITransform = node.getComponent(UITransform);
+        tileUI.width = this.tileWidth;
+        tileUI.height = this.tileWidth;
+        const tilePos = new Vec3(this.startPos.x + this.tileWidth * roadPos.x + this.tileMargin * roadPos.x, this.startPos.y - this.tileWidth * roadPos.y - this.tileMargin * roadPos.y, 0);
+        node.position = tilePos;
+        node.parent = this.TileMap;
+    }
+
+    saveStorage(){
+        const tilesData = JSON.stringify(this.tilesData)
+        localStorage.setItem('tilesData',tilesData)
     }
 
     // 开始游戏
@@ -194,6 +242,9 @@ export class GameManage extends Component {
             default:
                 break;
         }
+
+
+        this.saveStorage(); // 储存为本地数据
     }
 }
 
