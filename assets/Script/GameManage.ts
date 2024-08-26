@@ -1,4 +1,4 @@
-import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, UITransform, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v3, Vec2, Vec3 } from 'cc';
 import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
@@ -57,11 +57,13 @@ export class GameManage extends Component {
     // 初始化
     init(){
         const tilesData:string = localStorage.getItem('tilesData')
+        // 使用本地存储的情况
         if(tilesData){
             this.tilesData = JSON.parse(tilesData)
             this.renderTileMap();
         }else{
             this.initTileMap();
+            this.renderTileMap();
             this.randomTile();
         }
         
@@ -146,6 +148,10 @@ export class GameManage extends Component {
         const tilePos = new Vec3(this.startPos.x + this.tileWidth * roadPos.x + this.tileMargin * roadPos.x, this.startPos.y - this.tileWidth * roadPos.y - this.tileMargin * roadPos.y, 0);
         node.position = tilePos;
         node.parent = this.TileMap;
+
+        // 播放动画
+        node.scale = v3(0.2,0.2,0.2);
+        tween(node).to(0.15,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
     }
 
     saveStorage(){
@@ -165,7 +171,7 @@ export class GameManage extends Component {
 
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
-        this.tileNums = customEventData;
+        // this.tileNums = customEventData;
         this.SettingMenu.active = false;
     }
 
