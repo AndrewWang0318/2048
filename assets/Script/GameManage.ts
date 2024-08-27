@@ -76,10 +76,10 @@ export class GameManage extends Component {
             this.tilesData = userInfoData.tilesData;
         }else{
             this.tilesData = [];
-            for (let i = 0; i < this.tileNums; i++) {
-                this.tilesData.push([]);
-                for (let j = 0; j < this.tileNums; j++) {
-                    this.tilesData[i].push(null);
+            for (let rowIdx = 0; rowIdx < this.tileNums; rowIdx++) {
+                this.tilesData[rowIdx] = [];
+                for (let colIdx = 0; colIdx < this.tileNums; colIdx++) {
+                    this.tilesData[rowIdx][colIdx] = null;
                 }
             }
         }
@@ -101,14 +101,19 @@ export class GameManage extends Component {
         this.startPos = new Vec3( startX, startY, 0 ); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
         
         // 初始化
-        for (let i = 0; i < this.tilesData.length; i++) {
-            for (let j = 0; j < this.tilesData[i].length; j++) {
-                const curPos = new Vec3(i,j,0)
-                const curTile = this.tilesData[curPos.x][curPos.y];
+        for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
+            const array = this.tilesData[rowIdx];
+
+            for (let colIdx = 0; colIdx < array.length; colIdx++) {
+
+                const curPos = new Vec3(colIdx,rowIdx,0)
+
+                const curItem = this.tilesData[curPos.y][curPos.x];
+
                 this.createRoad(curPos);
                 // 不为null的情况下
-                if(curTile !== null){
-                    const curNum = Number(curTile.getComponent(Tile).TileLable.string) 
+                if(curItem !== null){
+                    const curNum = Number(curItem.getComponent(Tile).TileLable.string) 
                     this.createTile(false,false,curNum,curPos);
                 }
             }
@@ -126,10 +131,10 @@ export class GameManage extends Component {
         const randomNum = Math.floor(Math.random() * 2) === 1 ? 4 : 2; // 是否生成一个双倍大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
         const roadArr = []; // 空白块的下标
-        this.tilesData.forEach( (arr,idx) => {
-            arr.forEach((v,i) => {
+        this.tilesData.forEach( (arr,rowIdx) => {
+            arr.forEach((v,colIdx) => {
                 if(v === null){
-                    roadArr.push(new Vec3(idx,i,0));
+                    roadArr.push(new Vec3(colIdx,rowIdx,0));
                 }
             })
         });
@@ -142,7 +147,7 @@ export class GameManage extends Component {
         const tile =  node.getComponent(Tile)
         tile.init(num)
 
-        this.tilesData[roadPos.x][roadPos.y] = node; // 将目标的空白块重新赋值
+        this.tilesData[roadPos.y][roadPos.x] = node; // 将目标的空白块重新赋值
 
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
@@ -278,17 +283,38 @@ export class GameManage extends Component {
     private calculateTiles(type:MoveDirect){
 
         if(type === MoveDirect.LEFT){
-            for (let idx = 0; idx < this.tilesData.length; idx++) {
-                const array = this.tilesData[idx];
-                for (let i = 0; i < array.length; i++) {
-                    const curPos = new Vec3(idx,i,0);// 当前坐标
-                    const curItem = array[i]; // 当前值
+            // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
+            for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
+                const array = this.tilesData[rowIdx];
+                for (let colIdx = 0; colIdx < array.length; colIdx++) {
 
-                    const tarPos = new Vec3(idx-1,i,0);// 目标坐标
-                    const tarItem = idx-1 >= 0 ? this.tilesData[tarPos.x][tarPos.y] : null; // 目标值
+                    const curPos = new Vec3(colIdx,rowIdx,0);// 当前坐标
+
+
+                    const curItem = this.tilesData[curPos.y][curPos.x]; // 当前值
                     
+                    const endColIdx = this.tilesData[curPos.y].findIndex( v => v === null ); // 找到x轴的第几个
+
+                    const tarPos = new Vec3(endColIdx,curPos.y,0);// 目标坐标
+
+                    const tarItem = this.tilesData[tarPos.y][tarPos.x]; // 目标值
+                    
+                    const curNum = curItem ? Number(curItem.getComponent(Tile).TileLable.string) : 0;
+                    const tarNum = tarItem ? Number(tarItem.getComponent(Tile).TileLable.string) : 0;
+
                     // 目标结果是空值则移动,否则合并 并 移动
-                    if(curPos.x !== 0 && curItem !== null && tarItem === null){
+                    if(curPos.x !== 0 && curItem !== null){
+
+                        if(tarItem === null){
+
+                        }
+
+                        if(curNum === tarNum){
+
+                        }
+
+                        console.log(endColIdx,this.tilesData,curNum,curItem)
+
                         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
                         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
 
@@ -297,8 +323,8 @@ export class GameManage extends Component {
                         this.tileMovePosition(curItem,tarTilePos);
 
                         // 移动完成后需要更改其位置
-                        this.tilesData[tarPos.x][tarPos.y] = curItem;
-                        this.tilesData[curPos.x][curPos.y] = null;
+                        this.tilesData[tarPos.y][tarPos.x] = curItem;
+                        this.tilesData[curPos.y][curPos.x] = null;
                     }
                     
                     // else if(curPos.x !== 0 && curItem !== null && tarItem === null && curNum === tarNum){
@@ -334,7 +360,7 @@ export class GameManage extends Component {
 
     // 块移动动画
     private tileMovePosition(tile:Node,tarPos:Vec3){
-        tween(tile).to(0.3, { position:tarPos }, { easing: 'sineInOut' }).start();
+        tween(tile).to(0.15, { position:tarPos }, { easing: 'sineInOut' }).start();
     }
 }
 
