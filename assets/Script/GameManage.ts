@@ -27,7 +27,7 @@ export class GameManage extends Component {
     @property(Prefab)
     Road:Prefab;
 
-    private isGameStarting:boolean = true; // 游戏是否已经开始
+    private isGameStarting:boolean = false; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
     private posEnd:Vec2; // 结束点
 
@@ -37,19 +37,17 @@ export class GameManage extends Component {
     tileWidth:number; // 格子的宽度
     startPos:Vec3; // 起始点坐标
 
-    // 游戏开始[回调]
+    // 游戏开始时的回调
     start() {
         this.addEventListener();
         this.StartMenu.active = true;
         this.SettingMenu.active = false;
-
         this.init();
     }
 
     // 重新开始
     reStart(){
         localStorage.removeItem('tilesData');
-
         this.init();
     }
 
@@ -63,27 +61,24 @@ export class GameManage extends Component {
         }
     }
     
-    // 初始化方块地图
+    // 初始化块地图数据
     initTileMapData(){
-
-        
-
-        const tilesData:string = localStorage.getItem('tilesData')
+        const tilesData:string = localStorage.getItem('tilesData');
         // 使用本地存储的情况
         if(tilesData){
-            this.tilesData = JSON.parse(tilesData)
+            this.tilesData = JSON.parse(tilesData);
         }else{
             this.tilesData = [];
             for (let i = 0; i < this.tileNums; i++) {
-                this.tilesData.push([])
+                this.tilesData.push([]);
                 for (let j = 0; j < this.tileNums; j++) {
-                    this.tilesData[i].push(null)
+                    this.tilesData[i].push(null);
                 }
             }
         }
     }
 
-    // 渲染方块地图
+    // 渲染块地图视图
     renderTileMap(){
         // 清理之前所有的块
         this.TileMap.removeAllChildren();
@@ -96,18 +91,18 @@ export class GameManage extends Component {
         // 起始点坐标
         const startX = - tileMapWidth / 2 + this.tileWidth / 2 + this.tileMargin;
         const startY = tileMapWidth / 2 - this.tileWidth / 2 - this.tileMargin;
-        this.startPos = new Vec3( startX, startY, 0); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
+        this.startPos = new Vec3( startX, startY, 0 ); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
         
         // 初始化
         for (let i = 0; i < this.tilesData.length; i++) {
             for (let j = 0; j < this.tilesData[i].length; j++) {
                 const curPos = v2(i,j)
                 const curNum = this.tilesData[curPos.x][curPos.y];
-                // null 为空白格的情况,否则为格的情况
-                if(curNum == null){
-                    this.createRoad(curPos)
-                }else{
-                    this.createTile(false,false,curNum,curPos)
+
+                this.createRoad(curPos);
+                // 不为null的情况下
+                if(curNum !== null){
+                    this.createTile(false,false,curNum,curPos);
                 }
             }
         }
@@ -180,6 +175,7 @@ export class GameManage extends Component {
 
     // 开始游戏
     startGame(){
+        this.isGameStarting = true;
         this.StartMenu.active = false;
     }
 
@@ -213,14 +209,15 @@ export class GameManage extends Component {
 
     // 点击开始
     private onTouchStart(evt:EventTouch){
-        if(this.isGameStarting == false) return;
+        if(this.isGameStarting === false) return;
 
         this.posStart = evt.getLocation()
     }
 
     // 点击结束
     private onTouchEnd(evt:EventTouch){
-        if(this.isGameStarting == false) return;
+        if(this.isGameStarting === false) return;
+
         this.posEnd = evt.getLocation();
         // 计算 x,y 轴偏移量
         const offsetX = this.posStart.x - this.posEnd.x
@@ -248,7 +245,7 @@ export class GameManage extends Component {
         }
     }
 
-    // 砖块移动
+    // 块移动
     private tileMove(type:MoveDirect){
         switch (type) {
             case MoveDirect.LEFT:
@@ -269,48 +266,40 @@ export class GameManage extends Component {
         this.calculateTiles(type)
     }
 
-    // 运算tiles结果
-    calculateTiles(type:MoveDirect){
-        console.log(this.TileMap.children)
-        if(type === MoveDirect.LEFT){
+    // 运算块合并后结果
+    private calculateTiles(type:MoveDirect){
 
+        if(type === MoveDirect.LEFT){
             for (let idx = 0; idx < this.tilesData.length; idx++) {
                 const array = this.tilesData[idx];
                 for (let i = 0; i < array.length; i++) {
-                    const curPos = v2(idx,i);// 当前坐标
+                    const curPos = new Vec3(idx,i,0);// 当前坐标
                     const curItem = array[i]; // 当前值
                     if(curPos.x === 0) break; // 当前值是边界的情况,跳出
-                    const tarPos = v2(idx-1,i);// 目标坐标
+                    const tarPos = new Vec3(idx-1,i,0);// 目标坐标
                     const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
                     // 如果 当前和目标结果不是空值 且  当前值和目标值相等 则 合并两者的值
                     if(curItem !== null && tarItem !== null && curItem === tarItem){
+                        const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
+                        const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
+                        const tilePos = new Vec3( xPos, yPos, 0);
+                        
+                        const curIdx =  curPos.x * curPos.y
+                        const tarIdx =  tarPos.x * tarPos.y
+                        
+                        const curTile = this.TileMap.children.find( node => {
+                            // node.name === 'Tile' && node.up === tilePos
+                        })
+                        
 
-                        console.log(curItem,curPos,tarItem,tarPos);
-
+                        // this.tileMovePosition(curTile,tilePos)
                     }
                 }
             }
-
-
-            // this.tilesData.forEach( (arr,idx) => {
-            //     arr.forEach( (v,i) => {
-            //         const curPos = v2(idx,i);// 当前坐标
-            //         const curItem = v; // 当前值
-
-            //         const tarPos = v2(idx-1,i);// 目标坐标
-            //         const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
-
-            //         // 如果 当前和目标结果不是空值 且  当前值和目标值相等 且 并没有碰到边界
-            //         if(curItem !== null && tarItem !== null && curItem === tarItem && curPos.x !== 0){
-            //             // 合并两者的值
-
-            //             console.log(v,curPos,tarItem,tarPos);
-            //         }
-            //     })
-            // })
         }else if(type === MoveDirect.RIGHT){
             this.createTile();
         }else if(type === MoveDirect.DOWN){
+            
 
         }else if(type === MoveDirect.UP){
 
@@ -318,6 +307,10 @@ export class GameManage extends Component {
         this.saveStorage();
     }
 
+    // 块移动动画
+    private tileMovePosition(tile:Node,tarPos:Vec3){
+        tween(tile).to(0.3, { position:tarPos }, { easing: 'sineInOut' }).start();
+    }
 }
 
 
