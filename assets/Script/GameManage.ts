@@ -133,7 +133,7 @@ export class GameManage extends Component {
         this.tilesData.forEach( (arr,idx) => {
             arr.forEach((v,i) => {
                 if(v === null){
-                    roadArr.push(v2(idx,i));
+                    roadArr.push(new Vec3(idx,i,0));
                 }
             })
         });
@@ -289,9 +289,8 @@ export class GameManage extends Component {
                     const curPos = new Vec3(idx,i,0);// 当前坐标
                     const curItem = array[i]; // 当前值
 
-                    console.log(curPos,this.tilesData)
-                    if(curPos.x === 0) break; // 当前值是边界的情况,跳出
-                    if(curItem === null) break; // 如果当前结果是空值,跳出
+                    if(curPos.x === 0) continue; // 当前值是边界的情况,执行下一次循环
+                    if(curItem === null) continue; // 如果当前结果是空值,执行下一次循环
 
                     const tarPos = new Vec3(idx-1,i,0);// 目标坐标
                     const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
@@ -328,14 +327,14 @@ export class GameManage extends Component {
                 }
             }
         }else if(type === MoveDirect.RIGHT){
-            
+            this.createTile();
         }else if(type === MoveDirect.DOWN){
             
 
         }else if(type === MoveDirect.UP){
 
         }
-        // this.createTile();
+        
         // this.saveStorage();
     }
 
