@@ -9,6 +9,10 @@ enum MoveDirect {
     DOWN
 }
 
+type userInfo  = {
+
+}
+
 @ccclass('GameManage')
 export class GameManage extends Component {
     // 开始菜单
@@ -32,10 +36,12 @@ export class GameManage extends Component {
     private posEnd:Vec2; // 结束点
 
     tileNums:number = 4; // 容器容纳块数量
-    tilesData:(number | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
+    tilesData:(Node | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
     tileMargin:number = 16; // 块间隔
     tileWidth:number; // 格子的宽度
     startPos:Vec3; // 起始点坐标
+
+    userInfoData:userInfo = {}; // 玩家数据
 
     // 游戏开始时的回调
     start() {
@@ -47,7 +53,7 @@ export class GameManage extends Component {
 
     // 重新开始
     reStart(){
-        localStorage.removeItem('tilesData');
+        localStorage.removeItem('userInfoData');
         this.init();
     }
 
@@ -63,10 +69,11 @@ export class GameManage extends Component {
     
     // 初始化块地图数据
     initTileMapData(){
-        const tilesData:string = localStorage.getItem('tilesData');
+        const userInfoDataLocal:string = localStorage.getItem('userInfoData');
         // 使用本地存储的情况
-        if(tilesData){
-            this.tilesData = JSON.parse(tilesData);
+        if(userInfoDataLocal){
+            const userInfoData = JSON.parse(userInfoDataLocal)
+            this.tilesData = userInfoData.tilesData;
         }else{
             this.tilesData = [];
             for (let i = 0; i < this.tileNums; i++) {
@@ -99,11 +106,14 @@ export class GameManage extends Component {
                 const curPos = v2(i,j)
                 const curNum = this.tilesData[curPos.x][curPos.y];
 
+
+                console.log(curNum)
+
                 this.createRoad(curPos);
                 // 不为null的情况下
-                if(curNum !== null){
-                    this.createTile(false,false,curNum,curPos);
-                }
+                // if(curNum !== null){
+                //     this.createTile(false,false,curNum,curPos);
+                // }
             }
         }
     }
@@ -131,11 +141,14 @@ export class GameManage extends Component {
 
         const roadIdx = Math.floor(Math.random() * roadArr.length); // 空白块下标
         const roadPos = isRandom ? roadArr[roadIdx] : curPos; // 随机的空白块的坐标
-        this.tilesData[roadPos.x][roadPos.y] = num; // 将目标的空白块重新赋值
+       
 
         const node = instantiate(this.Tile);
         const tile =  node.getComponent(Tile)
         tile.init(num)
+
+        this.tilesData[roadPos.x][roadPos.y] = node; // 将目标的空白块重新赋值
+
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
@@ -169,8 +182,8 @@ export class GameManage extends Component {
 
     // 保存历史数据
     saveStorage(){
-        const tilesData = JSON.stringify(this.tilesData)
-        localStorage.setItem('tilesData',tilesData)
+        const userInfoData = JSON.stringify(this.userInfoData)
+        localStorage.setItem('userInfoData',userInfoData)
     }
 
     // 开始游戏
@@ -278,21 +291,24 @@ export class GameManage extends Component {
                     if(curPos.x === 0) break; // 当前值是边界的情况,跳出
                     const tarPos = new Vec3(idx-1,i,0);// 目标坐标
                     const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
-                    // 如果 当前和目标结果不是空值 且  当前值和目标值相等 则 合并两者的值
-                    if(curItem !== null && tarItem !== null && curItem === tarItem){
+   
+
+                    if(curItem === null || tarItem === null) break; // 如果当前结果 或 目标结果 是空值
+                    //  且  当前值和目标值相等 则 合并两者的值
+                    const curTile = curItem.getComponent(Tile)
+                    const curNum = Number(curTile.TileLable.string);
+
+                    const tarTile = tarItem.getComponent(Tile)
+                    const tarNum = Number(tarTile.TileLable.string);
+                    
+                    if(curNum === tarNum){
                         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
                         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
-                        const tilePos = new Vec3( xPos, yPos, 0);
+                        const tarTilePos = new Vec3( xPos, yPos, 0);
                         
-                        const curIdx =  curPos.x * curPos.y
-                        const tarIdx =  tarPos.x * tarPos.y
-                        
-                        const curTile = this.TileMap.children.find( node => {
-                            // node.name === 'Tile' && node.up === tilePos
-                        })
-                        
+                        console.log('same',curTile,tarTile,curNum,tarNum)
 
-                        // this.tileMovePosition(curTile,tilePos)
+                        this.tileMovePosition(curItem,tarTilePos)
                     }
                 }
             }
@@ -304,7 +320,7 @@ export class GameManage extends Component {
         }else if(type === MoveDirect.UP){
 
         }
-        this.saveStorage();
+        // this.saveStorage();
     }
 
     // 块移动动画
