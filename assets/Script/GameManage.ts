@@ -1,4 +1,4 @@
-import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, UITransform, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v3, Vec2, Vec3 } from 'cc';
 import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
@@ -7,6 +7,10 @@ enum MoveDirect {
     RIGHT,
     UP,
     DOWN
+}
+
+type userInfo  = {
+
 }
 
 @ccclass('GameManage')
@@ -27,86 +31,159 @@ export class GameManage extends Component {
     @property(Prefab)
     Road:Prefab;
 
-    private isGameStarting:boolean = true; // 游戏是否已经开始
+    private isGameStarting:boolean = false; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
     private posEnd:Vec2; // 结束点
 
     tileNums:number = 4; // 容器容纳块数量
+    tilesData:(Node | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
     tileMargin:number = 16; // 块间隔
-    tilesData:(number | null)[][] = []; // 容器内容 null 代表为空白 数字代表为生成的块
+    tileWidth:number; // 格子的宽度
+    startPos:Vec3; // 起始点坐标
+
+    userInfoData:userInfo = {}; // 玩家数据
+
+    // 游戏开始时的回调
     start() {
         this.addEventListener();
-
         this.StartMenu.active = true;
         this.SettingMenu.active = false;
-
         this.init();
     }
 
-    init(){
-        this.initTileMap();
-        this.renderTileMap();
+    // 重新开始
+    reStart(){
+        localStorage.removeItem('userInfoData');
+        this.init();
     }
-    
-    // 初始化方块地图
-    initTileMap(){
-        this.tilesData = [];
-        for (let i = 0; i < this.tileNums; i++) {
-            this.tilesData.push([])
-            for (let j = 0; j < this.tileNums; j++) {
-                this.tilesData[i].push(null)
-            }
+
+    // 初始化
+    init(){
+        const tilesData:string | null = localStorage.getItem('tilesData')
+        this.initTileMapData();
+        this.renderTileMap();
+        if(tilesData === null){
+            this.createTile();
         }
     }
-
-    // 随机生成块
-    randomTile(){
-        
-    }
-
-    // 渲染方块地图
-    renderTileMap(){
-        const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
-        // 块容器宽度
-        const tileMapWidth = tileMapUI.width; 
-        // 块边距
-        const tileMargin = this.tileMargin;
-        // 块宽度
-        const tileWidth = (tileMapWidth - tileMargin * ( this.tileNums + 1 )) / this.tileNums
-        // 起始点坐标
-        const startX = - tileMapWidth / 2 + tileWidth / 2 + tileMargin;
-        const startY = tileMapWidth / 2 - tileWidth / 2 - tileMargin;
-        const startPos =  new Vec3( startX, startY, 0); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
-        // 初始化
-        for (let i = 0; i < this.tilesData.length; i++) {
-            for (let j = 0; j < this.tilesData[i].length; j++) {
-                const num = this.tilesData[i][j];
-                // null 为空白格的情况,否则为格的情况
-                if(num == null){
-                    const node = instantiate(this.Road);
-                    const tileUI:UITransform = node.getComponent(UITransform);
-                    tileUI.width = tileWidth;
-                    tileUI.height = tileWidth;
-                    const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
-                    node.position = tilePos;
-                    node.parent = this.TileMap;
-                }else{
-                    const node = instantiate(this.Tile);
-                    const tile =  node.getComponent(Tile)
-                    tile.init(num)
-                    const tileUI:UITransform = node.getComponent(UITransform);
-                    tileUI.width = tileWidth;
-                    tileUI.height = tileWidth;
-                    const tilePos = new Vec3(startPos.x + tileWidth * i + tileMargin * i, startPos.y - tileWidth * j - tileMargin * j, 0);
-                    node.position = tilePos;
-                    node.parent = this.TileMap;
+    
+    // 初始化块地图数据
+    initTileMapData(){
+        const userInfoDataLocal:string = localStorage.getItem('userInfoData');
+        // 使用本地存储的情况
+        if(userInfoDataLocal){
+            const userInfoData = JSON.parse(userInfoDataLocal)
+            this.tilesData = userInfoData.tilesData;
+        }else{
+            this.tilesData = [];
+            for (let i = 0; i < this.tileNums; i++) {
+                this.tilesData.push([]);
+                for (let j = 0; j < this.tileNums; j++) {
+                    this.tilesData[i].push(null);
                 }
             }
         }
     }
 
+    // 渲染块地图视图
+    renderTileMap(){
+        // 清理之前所有的块
+        this.TileMap.removeAllChildren();
+
+        const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
+        // 块容器宽度
+        const tileMapWidth = tileMapUI.width; 
+        // 块宽度
+        this.tileWidth = (tileMapWidth - this.tileMargin * ( this.tileNums + 1 )) / this.tileNums
+        // 起始点坐标
+        const startX = - tileMapWidth / 2 + this.tileWidth / 2 + this.tileMargin;
+        const startY = tileMapWidth / 2 - this.tileWidth / 2 - this.tileMargin;
+        this.startPos = new Vec3( startX, startY, 0 ); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
+        
+        // 初始化
+        for (let i = 0; i < this.tilesData.length; i++) {
+            for (let j = 0; j < this.tilesData[i].length; j++) {
+                const curPos = new Vec3(i,j,0)
+                const curTile = this.tilesData[curPos.x][curPos.y];
+                this.createRoad(curPos);
+                // 不为null的情况下
+                if(curTile !== null){
+                    const curNum = Number(curTile.getComponent(Tile).TileLable.string) 
+                    this.createTile(false,false,curNum,curPos);
+                }
+            }
+        }
+    }
+
+    /**
+     * 创建一个新的块(tile)。
+     *
+     * @param {boolean} isAnimated - 指定是否为新创建的块添加动画效果。默认为 `false`，如果设置为 `true`，则在创建块时应用动画。
+     * @param {boolean} isRandom - 指定块的生成是否为随机位置。默认为 `true`，如果设置为 `false`，则使用指定的生成位置。
+     * @param {number} curNum - 当前块的编号或标识，用于区分或跟踪块的状态。
+     */
+    createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
+        const randomNum = Math.floor(Math.random() * 2) === 1 ? 4 : 2; // 是否生成一个双倍大的数字
+        const num = isRandom ? randomNum: curNum; // 生成的数字大小
+        const roadArr = []; // 空白块的下标
+        this.tilesData.forEach( (arr,idx) => {
+            arr.forEach((v,i) => {
+                if(v === null){
+                    roadArr.push(new Vec3(idx,i,0));
+                }
+            })
+        });
+        if(roadArr.length <= 0) return; // 如果当前没有空白块则跳出
+
+        const roadIdx = Math.floor(Math.random() * roadArr.length); // 空白块下标
+        const roadPos = isRandom ? roadArr[roadIdx] : curPos; // 随机的空白块的坐标
+       
+        const node = instantiate(this.Tile);
+        const tile =  node.getComponent(Tile)
+        tile.init(num)
+
+        this.tilesData[roadPos.x][roadPos.y] = node; // 将目标的空白块重新赋值
+
+        const tileUI:UITransform = node.getComponent(UITransform);
+        tileUI.width = this.tileWidth;
+        tileUI.height = this.tileWidth;
+
+        const xPos = this.startPos.x + this.tileWidth * roadPos.x + this.tileMargin * roadPos.x
+        const yPos = this.startPos.y - this.tileWidth * roadPos.y - this.tileMargin * roadPos.y
+        const tilePos = new Vec3( xPos, yPos, 0);
+        node.position = tilePos;
+        node.parent = this.TileMap;
+
+        // 播放动画
+        if(isAnimated){
+            node.scale = v3(0.2,0.2,0.2);
+            tween(node).to(0.15,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
+        }
+    }
+    
+    // 生成 空白块
+    createRoad(curPos:Vec3){
+        const node = instantiate(this.Road);
+        const tileUI:UITransform = node.getComponent(UITransform);
+        tileUI.width = this.tileWidth;
+        tileUI.height = this.tileWidth;
+
+        const xPos = this.startPos.x + this.tileWidth * curPos.x + this.tileMargin * curPos.x;
+        const yPos = this.startPos.y - this.tileWidth * curPos.y - this.tileMargin * curPos.y;
+        const tilePos = new Vec3( xPos, yPos, 0 );
+        node.position = tilePos;
+        node.parent = this.TileMap;
+    }
+
+    // 保存历史数据
+    saveStorage(){
+        const userInfoData = JSON.stringify(this.userInfoData)
+        localStorage.setItem('userInfoData',userInfoData)
+    }
+
     // 开始游戏
     startGame(){
+        this.isGameStarting = true;
         this.StartMenu.active = false;
     }
 
@@ -117,7 +194,7 @@ export class GameManage extends Component {
 
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
-        this.tileNums = customEventData;
+        // this.tileNums = customEventData;
         this.SettingMenu.active = false;
     }
 
@@ -140,14 +217,15 @@ export class GameManage extends Component {
 
     // 点击开始
     private onTouchStart(evt:EventTouch){
-        if(this.isGameStarting == false) return;
+        if(this.isGameStarting === false) return;
 
         this.posStart = evt.getLocation()
     }
 
     // 点击结束
     private onTouchEnd(evt:EventTouch){
-        if(this.isGameStarting == false) return;
+        if(this.isGameStarting === false) return;
+
         this.posEnd = evt.getLocation();
         // 计算 x,y 轴偏移量
         const offsetX = this.posStart.x - this.posEnd.x
@@ -175,9 +253,8 @@ export class GameManage extends Component {
         }
     }
 
-    // 砖块移动
+    // 块移动
     private tileMove(type:MoveDirect){
-
         switch (type) {
             case MoveDirect.LEFT:
                 console.log('left direction')
@@ -194,6 +271,70 @@ export class GameManage extends Component {
             default:
                 break;
         }
+        this.calculateTiles(type)
+    }
+
+    // 运算块合并后结果
+    private calculateTiles(type:MoveDirect){
+
+        if(type === MoveDirect.LEFT){
+            for (let idx = 0; idx < this.tilesData.length; idx++) {
+                const array = this.tilesData[idx];
+                for (let i = 0; i < array.length; i++) {
+                    const curPos = new Vec3(idx,i,0);// 当前坐标
+                    const curItem = array[i]; // 当前值
+
+                    const tarPos = new Vec3(idx-1,i,0);// 目标坐标
+                    const tarItem = idx-1 >= 0 ? this.tilesData[tarPos.x][tarPos.y] : null; // 目标值
+                    
+                    // 目标结果是空值则移动,否则合并 并 移动
+                    if(curPos.x !== 0 && curItem !== null && tarItem === null){
+                        const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
+                        const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
+
+                        const tarTilePos = new Vec3( xPos, yPos, 0);
+
+                        this.tileMovePosition(curItem,tarTilePos);
+
+                        // 移动完成后需要更改其位置
+                        this.tilesData[tarPos.x][tarPos.y] = curItem;
+                        this.tilesData[curPos.x][curPos.y] = null;
+                    }
+                    
+                    // else if(curPos.x !== 0 && curItem !== null && tarItem === null && curNum === tarNum){
+                    //     //  且  当前值和目标值相等 则 合并两者的值
+                    //     const curTile = curItem.getComponent(Tile)
+                    //     const curNum = Number(curTile.TileLable.string);
+
+                    //     const tarTile = tarItem.getComponent(Tile)
+                    //     const tarNum = Number(tarTile.TileLable.string);
+                    //     if(curNum === tarNum){
+                    //         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
+                    //         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
+                    //         const tarTilePos = new Vec3( xPos, yPos, 0);
+                            
+                    //         console.log('same',curTile,tarTile,curNum,tarNum)
+    
+                    //         // this.tileMovePosition(curItem,tarTilePos)
+                    //     }
+                    // }
+                }
+            }
+        }else if(type === MoveDirect.RIGHT){
+            this.createTile();
+        }else if(type === MoveDirect.DOWN){
+            
+
+        }else if(type === MoveDirect.UP){
+
+        }
+        
+        // this.saveStorage();
+    }
+
+    // 块移动动画
+    private tileMovePosition(tile:Node,tarPos:Vec3){
+        tween(tile).to(0.3, { position:tarPos }, { easing: 'sineInOut' }).start();
     }
 }
 
