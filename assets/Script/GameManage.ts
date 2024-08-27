@@ -1,4 +1,4 @@
-import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v3, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v2, v3, Vec2, Vec3 } from 'cc';
 import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
@@ -37,6 +37,7 @@ export class GameManage extends Component {
     tileWidth:number; // 格子的宽度
     startPos:Vec3; // 起始点坐标
 
+    // 游戏开始[回调]
     start() {
         this.addEventListener();
         this.StartMenu.active = true;
@@ -47,41 +48,46 @@ export class GameManage extends Component {
 
     // 重新开始
     reStart(){
-        this.initTileMap();
-        this.renderTileMap();
-        this.randomTile();
+        localStorage.removeItem('tilesData');
 
-        this.saveStorage();
+        this.init();
     }
 
     // 初始化
     init(){
+        const tilesData:string | null = localStorage.getItem('tilesData')
+        this.initTileMapData();
+        this.renderTileMap();
+        if(tilesData === null){
+            this.createTile();
+        }
+    }
+    
+    // 初始化方块地图
+    initTileMapData(){
+
+        
+
         const tilesData:string = localStorage.getItem('tilesData')
         // 使用本地存储的情况
         if(tilesData){
             this.tilesData = JSON.parse(tilesData)
-            this.renderTileMap();
         }else{
-            this.initTileMap();
-            this.renderTileMap();
-            this.randomTile();
-        }
-        
-    }
-    
-    // 初始化方块地图
-    initTileMap(){
-        this.tilesData = [];
-        for (let i = 0; i < this.tileNums; i++) {
-            this.tilesData.push([])
-            for (let j = 0; j < this.tileNums; j++) {
-                this.tilesData[i].push(null)
+            this.tilesData = [];
+            for (let i = 0; i < this.tileNums; i++) {
+                this.tilesData.push([])
+                for (let j = 0; j < this.tileNums; j++) {
+                    this.tilesData[i].push(null)
+                }
             }
         }
     }
 
     // 渲染方块地图
     renderTileMap(){
+        // 清理之前所有的块
+        this.TileMap.removeAllChildren();
+
         const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
         // 块容器宽度
         const tileMapWidth = tileMapUI.width; 
@@ -95,49 +101,42 @@ export class GameManage extends Component {
         // 初始化
         for (let i = 0; i < this.tilesData.length; i++) {
             for (let j = 0; j < this.tilesData[i].length; j++) {
-                const num = this.tilesData[i][j];
+                const curPos = v2(i,j)
+                const curNum = this.tilesData[curPos.x][curPos.y];
                 // null 为空白格的情况,否则为格的情况
-                if(num == null){
-                    const node = instantiate(this.Road);
-                    const tileUI:UITransform = node.getComponent(UITransform);
-                    tileUI.width = this.tileWidth;
-                    tileUI.height = this.tileWidth;
-                    const tilePos = new Vec3(this.startPos.x + this.tileWidth * i + this.tileMargin * i, this.startPos.y - this.tileWidth * j - this.tileMargin * j, 0);
-                    node.position = tilePos;
-                    node.parent = this.TileMap;
+                if(curNum == null){
+                    this.createRoad(curPos)
                 }else{
-                    const node = instantiate(this.Tile);
-                    const tile =  node.getComponent(Tile)
-                    tile.init(num)
-                    const tileUI:UITransform = node.getComponent(UITransform);
-                    tileUI.width = this.tileWidth;
-                    tileUI.height = this.tileWidth;
-                    const tilePos = new Vec3(this.startPos.x + this.tileWidth * i + this.tileMargin * i, this.startPos.y - this.tileWidth * j - this.tileMargin * j, 0);
-                    node.position = tilePos;
-                    node.parent = this.TileMap;
+                    this.createTile(false,false,curNum,curPos)
                 }
             }
         }
     }
 
-    // 随机生成块
-    randomTile(){
-        const isDouble = Math.floor(Math.random() * 2); // 是否生成一个双倍大小的数字
-        const num = isDouble === 1 ? 4 : 2; // 生成的数字大小
-
-        const roadArr = []; // 空白格的下标
+    /**
+     * 创建一个新的块(tile)。
+     *
+     * @param {boolean} isAnimated - 指定是否为新创建的块添加动画效果。默认为 `false`，如果设置为 `true`，则在创建块时应用动画。
+     * @param {boolean} isRandom - 指定块的生成是否为随机位置。默认为 `true`，如果设置为 `false`，则使用指定的生成位置。
+     * @param {number} curNum - 当前块的编号或标识，用于区分或跟踪块的状态。
+     */
+    createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec2 ){
+        const isDouble = Math.floor(Math.random() * 2); // 是否生成一个双倍大的数字
+        const randomNum = isDouble === 1 ? 4 : 2
+        const num = isRandom ? randomNum: curNum; // 生成的数字大小
+        const roadArr = []; // 空白块的下标
         this.tilesData.forEach( (arr,idx) => {
             arr.forEach((v,i) => {
                 if(v === null){
-                    roadArr.push(new Vec2(idx,i));
+                    roadArr.push(v2(idx,i));
                 }
             })
         });
+        if(roadArr.length <= 0) return; // 如果当前没有空白块则跳出
 
-        const roadIdx = Math.floor(Math.random() * roadArr.length); // 空白格下标
-        const roadPos = roadArr[roadIdx]; // 随机的空白格子的坐标
-
-        this.tilesData[roadPos.x][roadPos.y] = num; // 将目标的空白格重新赋值
+        const roadIdx = Math.floor(Math.random() * roadArr.length); // 空白块下标
+        const roadPos = isRandom ? roadArr[roadIdx] : curPos; // 随机的空白块的坐标
+        this.tilesData[roadPos.x][roadPos.y] = num; // 将目标的空白块重新赋值
 
         const node = instantiate(this.Tile);
         const tile =  node.getComponent(Tile)
@@ -145,15 +144,35 @@ export class GameManage extends Component {
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
-        const tilePos = new Vec3(this.startPos.x + this.tileWidth * roadPos.x + this.tileMargin * roadPos.x, this.startPos.y - this.tileWidth * roadPos.y - this.tileMargin * roadPos.y, 0);
+
+        const xPos = this.startPos.x + this.tileWidth * roadPos.x + this.tileMargin * roadPos.x
+        const yPos = this.startPos.y - this.tileWidth * roadPos.y - this.tileMargin * roadPos.y
+        const tilePos = new Vec3( xPos, yPos, 0);
         node.position = tilePos;
         node.parent = this.TileMap;
 
         // 播放动画
-        node.scale = v3(0.2,0.2,0.2);
-        tween(node).to(0.15,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
+        if(isAnimated){
+            node.scale = v3(0.2,0.2,0.2);
+            tween(node).to(0.15,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
+        }
+    }
+    
+    // 生成 空白块
+    createRoad(curPos:Vec2){
+        const node = instantiate(this.Road);
+        const tileUI:UITransform = node.getComponent(UITransform);
+        tileUI.width = this.tileWidth;
+        tileUI.height = this.tileWidth;
+
+        const xPos = this.startPos.x + this.tileWidth * curPos.x + this.tileMargin * curPos.x;
+        const yPos = this.startPos.y - this.tileWidth * curPos.y - this.tileMargin * curPos.y;
+        const tilePos = new Vec3( xPos, yPos, 0 );
+        node.position = tilePos;
+        node.parent = this.TileMap;
     }
 
+    // 保存历史数据
     saveStorage(){
         const tilesData = JSON.stringify(this.tilesData)
         localStorage.setItem('tilesData',tilesData)
@@ -231,7 +250,6 @@ export class GameManage extends Component {
 
     // 砖块移动
     private tileMove(type:MoveDirect){
-
         switch (type) {
             case MoveDirect.LEFT:
                 console.log('left direction')
@@ -248,10 +266,58 @@ export class GameManage extends Component {
             default:
                 break;
         }
-
-
-        this.saveStorage(); // 储存为本地数据
+        this.calculateTiles(type)
     }
+
+    // 运算tiles结果
+    calculateTiles(type:MoveDirect){
+        console.log(this.TileMap.children)
+        if(type === MoveDirect.LEFT){
+
+            for (let idx = 0; idx < this.tilesData.length; idx++) {
+                const array = this.tilesData[idx];
+                for (let i = 0; i < array.length; i++) {
+                    const curPos = v2(idx,i);// 当前坐标
+                    const curItem = array[i]; // 当前值
+                    if(curPos.x === 0) break; // 当前值是边界的情况,跳出
+                    const tarPos = v2(idx-1,i);// 目标坐标
+                    const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
+                    // 如果 当前和目标结果不是空值 且  当前值和目标值相等 则 合并两者的值
+                    if(curItem !== null && tarItem !== null && curItem === tarItem){
+
+                        console.log(curItem,curPos,tarItem,tarPos);
+
+                    }
+                }
+            }
+
+
+            // this.tilesData.forEach( (arr,idx) => {
+            //     arr.forEach( (v,i) => {
+            //         const curPos = v2(idx,i);// 当前坐标
+            //         const curItem = v; // 当前值
+
+            //         const tarPos = v2(idx-1,i);// 目标坐标
+            //         const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
+
+            //         // 如果 当前和目标结果不是空值 且  当前值和目标值相等 且 并没有碰到边界
+            //         if(curItem !== null && tarItem !== null && curItem === tarItem && curPos.x !== 0){
+            //             // 合并两者的值
+
+            //             console.log(v,curPos,tarItem,tarPos);
+            //         }
+            //     })
+            // })
+        }else if(type === MoveDirect.RIGHT){
+            this.createTile();
+        }else if(type === MoveDirect.DOWN){
+
+        }else if(type === MoveDirect.UP){
+
+        }
+        this.saveStorage();
+    }
+
 }
 
 
