@@ -1,4 +1,4 @@
-import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v2, v3, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v3, Vec2, Vec3 } from 'cc';
 import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
@@ -103,17 +103,14 @@ export class GameManage extends Component {
         // 初始化
         for (let i = 0; i < this.tilesData.length; i++) {
             for (let j = 0; j < this.tilesData[i].length; j++) {
-                const curPos = v2(i,j)
-                const curNum = this.tilesData[curPos.x][curPos.y];
-
-
-                console.log(curNum)
-
+                const curPos = new Vec3(i,j,0)
+                const curTile = this.tilesData[curPos.x][curPos.y];
                 this.createRoad(curPos);
                 // 不为null的情况下
-                // if(curNum !== null){
-                //     this.createTile(false,false,curNum,curPos);
-                // }
+                if(curTile !== null){
+                    const curNum = Number(curTile.getComponent(Tile).TileLable.string) 
+                    this.createTile(false,false,curNum,curPos);
+                }
             }
         }
     }
@@ -125,9 +122,8 @@ export class GameManage extends Component {
      * @param {boolean} isRandom - 指定块的生成是否为随机位置。默认为 `true`，如果设置为 `false`，则使用指定的生成位置。
      * @param {number} curNum - 当前块的编号或标识，用于区分或跟踪块的状态。
      */
-    createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec2 ){
-        const isDouble = Math.floor(Math.random() * 2); // 是否生成一个双倍大的数字
-        const randomNum = isDouble === 1 ? 4 : 2
+    createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
+        const randomNum = Math.floor(Math.random() * 2) === 1 ? 4 : 2; // 是否生成一个双倍大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
         const roadArr = []; // 空白块的下标
         this.tilesData.forEach( (arr,idx) => {
@@ -142,7 +138,6 @@ export class GameManage extends Component {
         const roadIdx = Math.floor(Math.random() * roadArr.length); // 空白块下标
         const roadPos = isRandom ? roadArr[roadIdx] : curPos; // 随机的空白块的坐标
        
-
         const node = instantiate(this.Tile);
         const tile =  node.getComponent(Tile)
         tile.init(num)
@@ -167,7 +162,7 @@ export class GameManage extends Component {
     }
     
     // 生成 空白块
-    createRoad(curPos:Vec2){
+    createRoad(curPos:Vec3){
         const node = instantiate(this.Road);
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
@@ -289,41 +284,40 @@ export class GameManage extends Component {
                     const curPos = new Vec3(idx,i,0);// 当前坐标
                     const curItem = array[i]; // 当前值
 
-                    if(curPos.x === 0) continue; // 当前值是边界的情况,执行下一次循环
-                    if(curItem === null) continue; // 如果当前结果是空值,执行下一次循环
-
                     const tarPos = new Vec3(idx-1,i,0);// 目标坐标
-                    const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
-
+                    const tarItem = idx-1 >= 0 ? this.tilesData[tarPos.x][tarPos.y] : null; // 目标值
                     
                     // 目标结果是空值则移动,否则合并 并 移动
-                    if(tarItem === null){
+                    if(curPos.x !== 0 && curItem !== null && tarItem === null){
                         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
                         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
 
                         const tarTilePos = new Vec3( xPos, yPos, 0);
 
                         this.tileMovePosition(curItem,tarTilePos);
-                    }else{
-                        //  且  当前值和目标值相等 则 合并两者的值
-                        const curTile = curItem.getComponent(Tile)
-                        const curNum = Number(curTile.TileLable.string);
 
-                        const tarTile = tarItem.getComponent(Tile)
-                        const tarNum = Number(tarTile.TileLable.string);
-                        if(curNum === tarNum){
-                            const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
-                            const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
-                            const tarTilePos = new Vec3( xPos, yPos, 0);
-                            
-                            console.log('same',curTile,tarTile,curNum,tarNum)
-    
-                            // this.tileMovePosition(curItem,tarTilePos)
-                        }
+                        // 移动完成后需要更改其位置
+                        this.tilesData[tarPos.x][tarPos.y] = curItem;
+                        this.tilesData[curPos.x][curPos.y] = null;
                     }
                     
-                    
-                    
+                    // else if(curPos.x !== 0 && curItem !== null && tarItem === null && curNum === tarNum){
+                    //     //  且  当前值和目标值相等 则 合并两者的值
+                    //     const curTile = curItem.getComponent(Tile)
+                    //     const curNum = Number(curTile.TileLable.string);
+
+                    //     const tarTile = tarItem.getComponent(Tile)
+                    //     const tarNum = Number(tarTile.TileLable.string);
+                    //     if(curNum === tarNum){
+                    //         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
+                    //         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
+                    //         const tarTilePos = new Vec3( xPos, yPos, 0);
+                            
+                    //         console.log('same',curTile,tarTile,curNum,tarNum)
+    
+                    //         // this.tileMovePosition(curItem,tarTilePos)
+                    //     }
+                    // }
                 }
             }
         }else if(type === MoveDirect.RIGHT){
