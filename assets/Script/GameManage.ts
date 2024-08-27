@@ -288,38 +288,54 @@ export class GameManage extends Component {
                 for (let i = 0; i < array.length; i++) {
                     const curPos = new Vec3(idx,i,0);// 当前坐标
                     const curItem = array[i]; // 当前值
+
+                    console.log(curPos,this.tilesData)
                     if(curPos.x === 0) break; // 当前值是边界的情况,跳出
+                    if(curItem === null) break; // 如果当前结果是空值,跳出
+
                     const tarPos = new Vec3(idx-1,i,0);// 目标坐标
                     const tarItem = this.tilesData[tarPos.x][tarPos.y]; // 目标值
-   
 
-                    if(curItem === null || tarItem === null) break; // 如果当前结果 或 目标结果 是空值
-                    //  且  当前值和目标值相等 则 合并两者的值
-                    const curTile = curItem.getComponent(Tile)
-                    const curNum = Number(curTile.TileLable.string);
-
-                    const tarTile = tarItem.getComponent(Tile)
-                    const tarNum = Number(tarTile.TileLable.string);
                     
-                    if(curNum === tarNum){
+                    // 目标结果是空值则移动,否则合并 并 移动
+                    if(tarItem === null){
                         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
                         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
-                        const tarTilePos = new Vec3( xPos, yPos, 0);
-                        
-                        console.log('same',curTile,tarTile,curNum,tarNum)
 
-                        this.tileMovePosition(curItem,tarTilePos)
+                        const tarTilePos = new Vec3( xPos, yPos, 0);
+
+                        this.tileMovePosition(curItem,tarTilePos);
+                    }else{
+                        //  且  当前值和目标值相等 则 合并两者的值
+                        const curTile = curItem.getComponent(Tile)
+                        const curNum = Number(curTile.TileLable.string);
+
+                        const tarTile = tarItem.getComponent(Tile)
+                        const tarNum = Number(tarTile.TileLable.string);
+                        if(curNum === tarNum){
+                            const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
+                            const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
+                            const tarTilePos = new Vec3( xPos, yPos, 0);
+                            
+                            console.log('same',curTile,tarTile,curNum,tarNum)
+    
+                            // this.tileMovePosition(curItem,tarTilePos)
+                        }
                     }
+                    
+                    
+                    
                 }
             }
         }else if(type === MoveDirect.RIGHT){
-            this.createTile();
+            
         }else if(type === MoveDirect.DOWN){
             
 
         }else if(type === MoveDirect.UP){
 
         }
+        // this.createTile();
         // this.saveStorage();
     }
 
