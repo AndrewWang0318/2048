@@ -89,27 +89,24 @@ export class GameManage extends Component {
     renderTileMap(){
         // 清理之前所有的块
         this.TileMap.removeAllChildren();
-
         const tileMapUI:UITransform = this.TileMap.getComponent(UITransform);
         // 块容器宽度
         const tileMapWidth = tileMapUI.width; 
         // 块宽度
         this.tileWidth = (tileMapWidth - this.tileMargin * ( this.tileNums + 1 )) / this.tileNums
         // 起始点坐标
-        const startX = - tileMapWidth / 2 + this.tileWidth / 2 + this.tileMargin;
-        const startY = tileMapWidth / 2 - this.tileWidth / 2 - this.tileMargin;
-        this.startPos = new Vec3( startX, startY, 0 ); // x y 轴的 0,0 点为中心点, 则左上角的点 x 轴是 负的 y 轴是正向的。且为 块容器宽的一半 +/- 块宽 的一半 +/- margin
-        
+        const offsetX = - tileMapWidth / 2 + this.tileWidth / 2 + this.tileMargin;
+        const offsetY = tileMapWidth / 2 - this.tileWidth / 2 - this.tileMargin;
+        // 0,0点是整个节点的中心点,如果以左上角顶点 作为为中心点 获取真实的位移值
+        // x 轴对比 原中心点 为 -( 地图宽的一半 + 块宽的一半 + 间隔 )
+        // y 轴对比 原中心点 为 +( 地图宽的一半 - 块宽的一半 - 间隔 )
+        this.startPos = new Vec3( offsetX, offsetY, 0);
         // 初始化
         for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
             const array = this.tilesData[rowIdx];
-
             for (let colIdx = 0; colIdx < array.length; colIdx++) {
-
                 const curPos = new Vec3(colIdx,rowIdx,0)
-
                 const curItem = this.tilesData[curPos.y][curPos.x];
-
                 this.createRoad(curPos);
                 // 不为null的情况下
                 if(curItem !== null){
@@ -128,7 +125,7 @@ export class GameManage extends Component {
      * @param {number} curNum - 当前块的编号或标识，用于区分或跟踪块的状态。
      */
     createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
-        const randomNum = Math.floor(Math.random() * 2) === 1 ? 4 : 2; // 是否生成一个双倍大的数字
+        const randomNum = Math.floor(Math.random() * 4) === 0 ? 4 : 2; // 4/1的几率生成一个更大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
         const roadArr = []; // 空白块的下标
         this.tilesData.forEach( (arr,rowIdx) => {
@@ -153,16 +150,14 @@ export class GameManage extends Component {
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
 
-        const xPos = this.startPos.x + this.tileWidth * roadPos.x + this.tileMargin * roadPos.x
-        const yPos = this.startPos.y - this.tileWidth * roadPos.y - this.tileMargin * roadPos.y
-        const tilePos = new Vec3( xPos, yPos, 0);
+        const tilePos = this.getRealPosition(roadPos);
         node.position = tilePos;
         node.parent = this.TileMap;
 
         // 播放动画
         if(isAnimated){
-            node.scale = v3(0.2,0.2,0.2);
-            tween(node).to(0.15,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
+            node.scale = v3(0.5,0.5,0.5);
+            tween(node).to(0.1,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
         }
     }
     
@@ -173,9 +168,7 @@ export class GameManage extends Component {
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
 
-        const xPos = this.startPos.x + this.tileWidth * curPos.x + this.tileMargin * curPos.x;
-        const yPos = this.startPos.y - this.tileWidth * curPos.y - this.tileMargin * curPos.y;
-        const tilePos = new Vec3( xPos, yPos, 0 );
+        const tilePos = this.getRealPosition(curPos);
         node.position = tilePos;
         node.parent = this.TileMap;
     }
@@ -281,73 +274,127 @@ export class GameManage extends Component {
 
     // 运算块合并后结果
     private calculateTiles(type:MoveDirect){
-
         if(type === MoveDirect.LEFT){
+            let isCreateTile = true;
             // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
             for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
                 const array = this.tilesData[rowIdx];
+                let hasMerged = false; // 用于记录当前行是否已经进行过合并
                 for (let colIdx = 0; colIdx < array.length; colIdx++) {
-
                     const curPos = new Vec3(colIdx,rowIdx,0);// 当前坐标
-
-
                     const curItem = this.tilesData[curPos.y][curPos.x]; // 当前值
+                    const curTile = curItem ? curItem.getComponent(Tile) : null;
+                    const curNum = curTile ? Number(curTile.TileLable.string) : -1; // 当前数字
                     
-                    const endColIdx = this.tilesData[curPos.y].findIndex( v => v === null ); // 找到x轴的第几个
-
-                    const tarPos = new Vec3(endColIdx,curPos.y,0);// 目标坐标
-
-                    const tarItem = this.tilesData[tarPos.y][tarPos.x]; // 目标值
+                    const endRoadColIdx = this.tilesData[curPos.y].findIndex( (v,i) => v === null && i < curPos.x ); // 找到x轴从左往右数第一个 空块 下标
+                    const tarRoadPos = new Vec3(endRoadColIdx,curPos.y,0);// 目标 空块 坐标
                     
-                    const curNum = curItem ? Number(curItem.getComponent(Tile).TileLable.string) : 0;
-                    const tarNum = tarItem ? Number(tarItem.getComponent(Tile).TileLable.string) : 0;
+                    const endTileColIdx = this.tilesData[curPos.y].findLastIndex( (v,i) => v !== null && i < curPos.x ); // 找到x轴从右往左数第一个 块 下标
+                    const tarTilePos = new Vec3(endTileColIdx,curPos.y,0);// 目标 块 坐标
+                    
+                    const tarItem = endTileColIdx !== -1 ? this.tilesData[curPos.y][endTileColIdx] : null; // 目标 块
+                    const tarTile = tarItem ? tarItem.getComponent(Tile) : null;
+                    const tarNum = tarTile ? Number(tarTile.TileLable.string) : -1;// 当前数字
+                    
+                    // 当前元素 不是左边界 且 不是空 
+                    const boundaryPosX = 0; // x轴边界
+                    if(curPos.x !== boundaryPosX && curItem !== null){
+                        if(endTileColIdx !== -1 && curNum === tarNum && !hasMerged){
+                            // 当前元素移动到目标元素 并更新视图
+                            const movePos = this.getRealPosition(tarTilePos);
+                            // 动画执行完毕后 删除目标元素 然后再生成新的元素
+                            this.tileMovePosition(curItem,movePos,()=> { 
+                                tarItem.destroy();
+                                if(isCreateTile){
+                                    this.createTile();
+                                    isCreateTile = false;
+                                }
+                            });
+                            this.tilesData[tarTilePos.y][tarTilePos.x] = curItem;
+                            this.tilesData[curPos.y][curPos.x] = null;
+                            // 合并元素(当前元素数值 x 2)
+                            const num = curNum * 2
+                            curTile.init(num)
 
-                    // 目标结果是空值则移动,否则合并 并 移动
-                    if(curPos.x !== 0 && curItem !== null){
-
-                        if(tarItem === null){
-
+                            hasMerged = true
+                        } else if( endRoadColIdx !== -1){ // 如果可以找到目标空缺 那么就可以移动
+                            const movePos = this.getRealPosition(tarRoadPos);
+                            this.tileMovePosition(curItem,movePos,()=>{
+                                if(isCreateTile){
+                                    this.createTile();
+                                    isCreateTile = false;
+                                }
+                            });
+                            // 移动完成后需要更改其位置
+                            this.tilesData[tarRoadPos.y][tarRoadPos.x] = curItem;
+                            this.tilesData[curPos.y][curPos.x] = null;
                         }
-
-                        if(curNum === tarNum){
-
-                        }
-
-                        console.log(endColIdx,this.tilesData,curNum,curItem)
-
-                        const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
-                        const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
-
-                        const tarTilePos = new Vec3( xPos, yPos, 0);
-
-                        this.tileMovePosition(curItem,tarTilePos);
-
-                        // 移动完成后需要更改其位置
-                        this.tilesData[tarPos.y][tarPos.x] = curItem;
-                        this.tilesData[curPos.y][curPos.x] = null;
                     }
                     
-                    // else if(curPos.x !== 0 && curItem !== null && tarItem === null && curNum === tarNum){
-                    //     //  且  当前值和目标值相等 则 合并两者的值
-                    //     const curTile = curItem.getComponent(Tile)
-                    //     const curNum = Number(curTile.TileLable.string);
-
-                    //     const tarTile = tarItem.getComponent(Tile)
-                    //     const tarNum = Number(tarTile.TileLable.string);
-                    //     if(curNum === tarNum){
-                    //         const xPos = this.startPos.x + this.tileWidth * tarPos.x + this.tileMargin * tarPos.x;
-                    //         const yPos = this.startPos.y - this.tileWidth * tarPos.y - this.tileMargin * tarPos.y;
-                    //         const tarTilePos = new Vec3( xPos, yPos, 0);
-                            
-                    //         console.log('same',curTile,tarTile,curNum,tarNum)
-    
-                    //         // this.tileMovePosition(curItem,tarTilePos)
-                    //     }
-                    // }
                 }
             }
         }else if(type === MoveDirect.RIGHT){
-            this.createTile();
+            let isCreateTile = true;
+            // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
+            for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
+                const array = this.tilesData[rowIdx];
+                let hasMerged = false; // 用于记录当前行是否已经进行过合并
+                for (let colIdx = array.length - 1; colIdx >= 0; colIdx--) {
+                    const curPos = new Vec3(colIdx,rowIdx,0);// 当前坐标
+                    const curItem = this.tilesData[curPos.y][curPos.x]; // 当前值
+                    const curTile = curItem ? curItem.getComponent(Tile) : null;
+                    const curNum = curTile ? Number(curTile.TileLable.string) : -1; // 当前数字
+                    
+                    const endRoadColIdx = this.tilesData[curPos.y].findLastIndex( (v,i) => v === null && i > curPos.x ); // 找到x轴从右往左数第一个 空块 下标*
+                    const tarRoadPos = new Vec3(endRoadColIdx,curPos.y,0);// 目标 空块 坐标
+                    
+                    const endTileColIdx = this.tilesData[curPos.y].findIndex( (v,i) => v !== null && i > curPos.x ); // 找到x轴从左往右数第一个 块 下标*
+                    const tarTilePos = new Vec3(endTileColIdx,curPos.y,0);// 目标 块 坐标
+                    
+                    const tarItem = endTileColIdx !== -1 ? this.tilesData[curPos.y][endTileColIdx] : null; // 目标 块
+                    const tarTile = tarItem ? tarItem.getComponent(Tile) : null;
+                    const tarNum = tarTile ? Number(tarTile.TileLable.string) : -1;// 当前数字
+                    
+                    // 当前元素 不是左边界 且 不是空
+                    const boundaryPosX = this.tileNums; // x轴边界
+                    if(curPos.x !== boundaryPosX && curItem !== null){
+                        if(endTileColIdx !== -1 && curNum === tarNum && !hasMerged){
+                            // 当前元素移动到目标元素 并更新视图
+                            const movePos = this.getRealPosition(tarTilePos);
+                            // 动画执行完毕后 删除目标元素 然后再生成新的元素
+                            this.tileMovePosition(curItem,movePos,()=>{
+                                tarItem.destroy();
+                                if(isCreateTile){
+                                    this.createTile();
+                                    isCreateTile = false;
+                                }
+                            });
+                            
+                            this.tilesData[tarTilePos.y][tarTilePos.x] = curItem;
+                            this.tilesData[curPos.y][curPos.x] = null;
+                            // 合并元素(当前元素数值 x 2)
+                            const num = curNum * 2
+                            curTile.init(num);
+
+                            hasMerged = true;
+                        } else if( endRoadColIdx !== -1){ // 如果可以找到目标空缺 那么就可以移动
+                            const movePos = this.getRealPosition(tarRoadPos);
+                            this.tileMovePosition(curItem,movePos,()=>{
+                                if(isCreateTile){
+                                    this.createTile();
+                                    isCreateTile = false;
+                                }
+                            });
+                            // 移动完成后需要更改其位置
+                            this.tilesData[tarRoadPos.y][tarRoadPos.x] = curItem;
+                            this.tilesData[curPos.y][curPos.x] = null;
+
+                            
+                        }
+                    }
+                    
+                }
+            }
         }else if(type === MoveDirect.DOWN){
             
 
@@ -359,8 +406,19 @@ export class GameManage extends Component {
     }
 
     // 块移动动画
-    private tileMovePosition(tile:Node,tarPos:Vec3){
-        tween(tile).to(0.15, { position:tarPos }, { easing: 'sineInOut' }).start();
+    private tileMovePosition(tile:Node,tarPos:Vec3,callback?:Function){
+        tween(tile)
+        .to(0.15, { position:tarPos }, { easing: 'sineInOut' })
+        .call(callback)
+        .start();
+    }
+
+    // 获取实际的位置
+    private getRealPosition(curPos:Vec3){
+        
+        const x = this.startPos.x + this.tileWidth * curPos.x + this.tileMargin * curPos.x; // x起始点 + 块宽度 * x轴坐标(个数) + 间隔宽度 * x轴坐标(个数)
+        const y = this.startPos.y - this.tileWidth * curPos.y - this.tileMargin * curPos.y; // y起始点 - 块宽度 * x轴坐标(个数) - 间隔宽度 * x轴坐标(个数)
+        return new Vec3( x, y, 0 );
     }
 }
 
