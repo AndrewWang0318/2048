@@ -125,7 +125,7 @@ export class GameManage extends Component {
      * @param {number} curNum - 当前块的编号或标识，用于区分或跟踪块的状态。
      */
     createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
-        const randomNum = Math.floor(Math.random() * 4) === 0 ? 4 : 2; // 4/1的几率生成一个更大的数字
+        const randomNum = Math.floor(Math.random() * 6) === 0 ? 4 : 2; // 5/1的几率生成一个更大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
         const roadArr = []; // 空白块的下标
         this.tilesData.forEach( (arr,rowIdx) => {
@@ -297,8 +297,8 @@ export class GameManage extends Component {
                     const tarNum = tarTile ? Number(tarTile.TileLable.string) : -1;// 当前数字
                     
                     // 当前元素 不是左边界 且 不是空 
-                    const boundaryPosX = 0; // x轴边界
-                    if(curPos.x !== boundaryPosX && curItem !== null){
+                    const boundaryPos = 0; // x轴边界
+                    if(curPos.x !== boundaryPos && curItem !== null){
                         if(endTileColIdx !== -1 && curNum === tarNum && !hasMerged){
                             // 当前元素移动到目标元素 并更新视图
                             const movePos = this.getRealPosition(tarTilePos);
@@ -315,7 +315,6 @@ export class GameManage extends Component {
                             // 合并元素(当前元素数值 x 2)
                             const num = curNum * 2
                             curTile.init(num)
-
                             hasMerged = true
                         } else if( endRoadColIdx !== -1){ // 如果可以找到目标空缺 那么就可以移动
                             const movePos = this.getRealPosition(tarRoadPos);
@@ -356,8 +355,8 @@ export class GameManage extends Component {
                     const tarNum = tarTile ? Number(tarTile.TileLable.string) : -1;// 当前数字
                     
                     // 当前元素 不是左边界 且 不是空
-                    const boundaryPosX = this.tileNums; // x轴边界
-                    if(curPos.x !== boundaryPosX && curItem !== null){
+                    const boundaryPos = this.tileNums; // x轴边界
+                    if(curPos.x !== boundaryPos && curItem !== null){
                         if(endTileColIdx !== -1 && curNum === tarNum && !hasMerged){
                             // 当前元素移动到目标元素 并更新视图
                             const movePos = this.getRealPosition(tarTilePos);
@@ -369,13 +368,11 @@ export class GameManage extends Component {
                                     isCreateTile = false;
                                 }
                             });
-                            
                             this.tilesData[tarTilePos.y][tarTilePos.x] = curItem;
                             this.tilesData[curPos.y][curPos.x] = null;
                             // 合并元素(当前元素数值 x 2)
                             const num = curNum * 2
                             curTile.init(num);
-
                             hasMerged = true;
                         } else if( endRoadColIdx !== -1){ // 如果可以找到目标空缺 那么就可以移动
                             const movePos = this.getRealPosition(tarRoadPos);
@@ -388,16 +385,72 @@ export class GameManage extends Component {
                             // 移动完成后需要更改其位置
                             this.tilesData[tarRoadPos.y][tarRoadPos.x] = curItem;
                             this.tilesData[curPos.y][curPos.x] = null;
-
-                            
                         }
                     }
                     
                 }
             }
         }else if(type === MoveDirect.DOWN){
-            
+            let isCreateTile = true;
+            // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
+            for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
+                const array = this.tilesData[rowIdx];
+                let hasMerged = false; // 用于记录当前行是否已经进行过合并
+                for (let colIdx = array.length - 1; colIdx >= 0; colIdx--) {
 
+                    const curPos = new Vec3(rowIdx,colIdx,0);// 当前坐标
+                    
+                    const curItem = this.tilesData[curPos.y][curPos.x]; // 当前值
+                    
+                    const curTile = curItem ? curItem.getComponent(Tile) : null;
+                    const curNum = curTile ? Number(curTile.TileLable.string) : -1; // 当前数字
+                    
+                    const endRoadColIdx = this.tilesData[curPos.y].findLastIndex( (v,i) => v === null && i > curPos.x ); // 找到x轴从右往左数第一个 空块 下标*
+                    const tarRoadPos = new Vec3(endRoadColIdx,curPos.y,0);// 目标 空块 坐标
+                    
+                    const endTileColIdx = this.tilesData[curPos.y].findIndex( (v,i) => v !== null && i > curPos.x ); // 找到x轴从左往右数第一个 块 下标*
+                    const tarTilePos = new Vec3(endTileColIdx,curPos.y,0);// 目标 块 坐标
+                    
+                    const tarItem = endTileColIdx !== -1 ? this.tilesData[curPos.y][endTileColIdx] : null; // 目标 块
+                    const tarTile = tarItem ? tarItem.getComponent(Tile) : null;
+                    const tarNum = tarTile ? Number(tarTile.TileLable.string) : -1;// 当前数字
+                    
+                    // 当前元素 不是左边界 且 不是空
+                    const boundaryPos = this.tileNums; // y轴边界
+                    if(curPos.y !== boundaryPos && curItem !== null){
+                        if(endTileColIdx !== -1 && curNum === tarNum && !hasMerged){
+                            // 当前元素移动到目标元素 并更新视图
+                            const movePos = this.getRealPosition(tarTilePos);
+                            // 动画执行完毕后 删除目标元素 然后再生成新的元素
+                            this.tileMovePosition(curItem,movePos,()=>{
+                                tarItem.destroy();
+                                if(isCreateTile){
+                                    this.createTile();
+                                    isCreateTile = false;
+                                }
+                            });
+                            this.tilesData[tarTilePos.y][tarTilePos.x] = curItem;
+                            this.tilesData[curPos.y][curPos.x] = null;
+                            // 合并元素(当前元素数值 x 2)
+                            const num = curNum * 2
+                            curTile.init(num);
+                            hasMerged = true;
+                        } else if( endRoadColIdx !== -1){ // 如果可以找到目标空缺 那么就可以移动
+                            const movePos = this.getRealPosition(tarRoadPos);
+                            this.tileMovePosition(curItem,movePos,()=>{
+                                if(isCreateTile){
+                                    this.createTile();
+                                    isCreateTile = false;
+                                }
+                            });
+                            // 移动完成后需要更改其位置
+                            this.tilesData[tarRoadPos.y][tarRoadPos.x] = curItem;
+                            this.tilesData[curPos.y][curPos.x] = null;
+                        }
+                    }
+                    
+                }
+            }
         }else if(type === MoveDirect.UP){
 
         }
