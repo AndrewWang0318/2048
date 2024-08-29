@@ -21,6 +21,9 @@ export class GameManage extends Component {
     // 开始菜单
     @property(Node)
     StartMenu:Node;
+    // 结束菜单
+    @property(Node)
+    OverMenu:Node;
     // 设置菜单
     @property(Node)
     SettingMenu:Node;
@@ -40,6 +43,13 @@ export class GameManage extends Component {
     // 当前分
     @property(Label)
     Score:Label;
+
+    // 结束面板的当前分
+    @property(Label)
+    OverScore:Label;
+    // 结束面板的最高分
+    @property(Label)
+    OverBestScore:Label;
 
     private isGameStarting:boolean = false; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
@@ -64,15 +74,18 @@ export class GameManage extends Component {
         this.addEventListener();
         this.StartMenu.active = true;
         this.SettingMenu.active = false;
+        this.OverMenu.active = false;
         this.init();
     }
 
     // 重新开始
     reStart(){
-        localStorage.removeItem('userInfoData');
+        this.isGameStarting = true;
+        this.OverMenu.active = false;
 
+        localStorage.removeItem('userInfoData');
         this.userInfoData.score = 0;
-        this.setScore();
+        this.Score.getComponent(Label).string = this.userInfoData.score.toString();
         this.init();
     }
 
@@ -235,7 +248,6 @@ export class GameManage extends Component {
     // 点击开始
     private onTouchStart(evt:EventTouch){
         if(this.isGameStarting === false) return;
-
         this.posStart = evt.getLocation()
     }
 
@@ -272,6 +284,10 @@ export class GameManage extends Component {
 
     // 块移动 运算块合并后结果
     private tileMove(type:MoveDirect){
+
+        // 先判断游戏是否结束
+        this.isGameOver();
+
         if(type === MoveDirect.LEFT){
             let isCreateTile = false; // 是否已经创建过块
             // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
@@ -312,7 +328,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore();
+                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -374,7 +390,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore();
+                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -438,7 +454,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore();
+                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -504,7 +520,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore();
+                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -527,7 +543,6 @@ export class GameManage extends Component {
                 }
             }
         }
-        
         // this.saveStorage();
     }
 
@@ -547,13 +562,54 @@ export class GameManage extends Component {
         return new Vec3( x, y, 0 );
     }
 
-    private setScore(){
-        this.userInfoData.score += 2;
+    // 设置分数
+    private setScore(num:number){
+        this.userInfoData.score += num;
         this.Score.getComponent(Label).string = this.userInfoData.score.toString();
 
         if(this.userInfoData.score > this.userInfoData.bestScore){
-            this.userInfoData.bestScore += 2;
+            this.userInfoData.bestScore += num;
             this.BestScore.getComponent(Label).string = this.userInfoData.bestScore.toString()
+        }
+    }
+
+    // 游戏是否结束
+    private isGameOver(){
+
+        let isOver = true
+
+        // 检查是否存在空位
+        for (let i = 0; i < this.tilesData.length; i++) {
+            for (let j = 0; j < this.tilesData[i].length; j++) {
+                if (this.tilesData[i][j] === null) {
+                    isOver = false; // 还有空位，游戏未结束
+                }
+            }
+        }
+        // 检查是否存在可以合并的相邻格子
+        // for (let i = 0; i < this.tilesData.length; i++) {
+        //     for (let j = 0; j < this.tilesData[i].length; j++) {
+        //         if (i < this.tilesData.length - 1 && this.tilesData[i][j] === this.tilesData[i + 1][j]) {
+        //             isOver = false; // 可以向下合并，游戏未结束
+        //         }
+        //         if (j < this.tilesData[i].length - 1 && this.tilesData[i][j] === this.tilesData[i][j + 1]) {
+        //             isOver = false; // 可以向右合并，游戏未结束
+        //         }
+        //     }
+        // }
+
+        if(isOver){
+            console.log('Game Over');
+            this.OverBestScore.string = this.userInfoData.bestScore.toString()
+            this.OverScore.string = this.userInfoData.score.toString()
+
+            this.isGameStarting = false;
+            this.OverMenu.active = true;
+            this.OverMenu.position = new Vec3(0,1660,0)
+            tween(this.OverMenu)
+            .delay(0.3)
+            .to(2,{ position:v3(0,0,0) },{ easing:'sineInOut' })
+            .start()
         }
     }
 }
