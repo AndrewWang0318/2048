@@ -225,6 +225,7 @@ export class GameManage extends Component {
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
         // this.tileNums = customEventData;
+        // this.init();
         this.SettingMenu.active = false;
     }
 
@@ -325,7 +326,7 @@ export class GameManage extends Component {
                             const movePos = this.getRealPosition(tarTilePos); // 目标点真实坐标
                             const tarItem = this.tilesData[rowIdx][endColIdx];
                             // 动画执行完毕后 删除目标元素 然后再生成新的元素
-                            this.tileMovePosition(curItem,movePos,()=> {
+                            this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
                                     this.setScore(curNum);
@@ -346,6 +347,8 @@ export class GameManage extends Component {
 
                                 // 目标位置发生了合并
                                 merged[endColIdx] = true
+
+                                this.playBounceAnime(curItem);
                             }
                         }
                     }
@@ -387,7 +390,7 @@ export class GameManage extends Component {
                             const tarItem = this.tilesData[rowIdx][endColIdx];
                             
                             // 动画执行完毕后 删除目标元素 然后再生成新的元素
-                            this.tileMovePosition(curItem,movePos,()=> {
+                            this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
                                     this.setScore(curNum);
@@ -407,6 +410,8 @@ export class GameManage extends Component {
                                 curTile.init(num)
                                 // 目标位置发生了合并
                                 merged[endColIdx] = true
+
+                                this.playBounceAnime(curItem);
                             }
                         }
                     }
@@ -451,7 +456,7 @@ export class GameManage extends Component {
                             const tarItem = this.tilesData[endRowIdx][colIdx];
                             
                             // 动画执行完毕后 删除目标元素 然后再生成新的元素
-                            this.tileMovePosition(curItem,movePos,()=> {
+                            this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
                                     this.setScore(curNum);
@@ -471,6 +476,8 @@ export class GameManage extends Component {
                                 curTile.init(num)
                                 // 目标位置发生了合并
                                 merged[endRowIdx] = true
+
+                                this.playBounceAnime(curItem);
                             }
                         }
                     }
@@ -517,7 +524,7 @@ export class GameManage extends Component {
                             const movePos = this.getRealPosition(tarTilePos); // 目标点真实坐标
                             const tarItem = this.tilesData[endRowIdx][colIdx]
                             // 动画执行完毕后 删除目标元素 然后再生成新的元素
-                            this.tileMovePosition(curItem,movePos,()=> {
+                            this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
                                     this.setScore(curNum);
@@ -537,6 +544,8 @@ export class GameManage extends Component {
                                 curTile.init(num);
                                 // 目标位置发生了合并
                                 merged[endRowIdx] = true;
+
+                                this.playBounceAnime(curItem);
                             }
                         }
                     }
@@ -547,10 +556,18 @@ export class GameManage extends Component {
     }
 
     // 块移动动画
-    private tileMovePosition(tile:Node,tarPos:Vec3,callback?:Function){
+    private playTileMoveAnime(tile:Node,tarPos:Vec3,callback?:Function){
         tween(tile)
         .to(0.1, { position:tarPos }, { easing: 'sineInOut' })
         .call(callback)
+        .start();
+    }
+
+    private playBounceAnime( node:Node ){
+        tween(node)
+        .to(0.1, { scale: new Vec3(0.9, 0.9, 1) }, { easing: 'quadIn' })
+        .to(0.15, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
+        .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'elasticOut' })
         .start();
     }
 
@@ -575,28 +592,31 @@ export class GameManage extends Component {
 
     // 游戏是否结束
     private isGameOver(){
-
         let isOver = true
 
-        // 检查是否存在空位
+        // 检查是否存在可以合并的相邻格子
         for (let i = 0; i < this.tilesData.length; i++) {
             for (let j = 0; j < this.tilesData[i].length; j++) {
-                if (this.tilesData[i][j] === null) {
-                    isOver = false; // 还有空位，游戏未结束
+                let curItem = this.tilesData[i][j]
+                // 还有空位，游戏未结束
+                if (curItem === null) {
+                    isOver = false;
+                }else{
+                    // let colItem = this.tilesData[i][j + 1];
+                    // let rowItem = this.tilesData[i + 1][j];
+                    // if ( i < this.tilesData.length - 1 && curItem !== null &&  rowItem !== null ) {
+                    //     if(curItem.getComponent(Tile).TileLable.string === rowItem.getComponent(Tile).TileLable.string){
+                    //         isOver = false; // 可以向下合并，游戏未结束
+                    //     }
+                    // }
+                    // if (j < this.tilesData[i].length - 1 && curItem !== null &&  colItem !== null) {
+                    //     if(curItem.getComponent(Tile).TileLable.string === colItem.getComponent(Tile).TileLable.string){
+                    //         isOver = false; // 可以向右合并，游戏未结束
+                    //     }
+                    // }
                 }
             }
         }
-        // 检查是否存在可以合并的相邻格子
-        // for (let i = 0; i < this.tilesData.length; i++) {
-        //     for (let j = 0; j < this.tilesData[i].length; j++) {
-        //         if (i < this.tilesData.length - 1 && this.tilesData[i][j] === this.tilesData[i + 1][j]) {
-        //             isOver = false; // 可以向下合并，游戏未结束
-        //         }
-        //         if (j < this.tilesData[i].length - 1 && this.tilesData[i][j] === this.tilesData[i][j + 1]) {
-        //             isOver = false; // 可以向右合并，游戏未结束
-        //         }
-        //     }
-        // }
 
         if(isOver){
             console.log('Game Over');
@@ -605,10 +625,10 @@ export class GameManage extends Component {
 
             this.isGameStarting = false;
             this.OverMenu.active = true;
-            this.OverMenu.position = new Vec3(0,1660,0)
+            this.OverMenu.scale = new Vec3(0,0,0)
             tween(this.OverMenu)
             .delay(0.3)
-            .to(2,{ position:v3(0,0,0) },{ easing:'sineInOut' })
+            .to(0.3,{ scale:v3(1,1,1) },{ easing:'sineInOut' })
             .start()
         }
     }
