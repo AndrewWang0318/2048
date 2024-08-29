@@ -1,4 +1,4 @@
-import { _decorator, Component, EventTouch, instantiate, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v3, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, EventTouch, instantiate, Label, Node, NodeEventType, Prefab, Sprite, tween, UITransform, v3, Vec2, Vec3 } from 'cc';
 import { Tile } from './Tile';
 const { ccclass, property } = _decorator;
 
@@ -10,7 +10,10 @@ enum MoveDirect {
 }
 
 type userInfo  = {
-
+    bestScore:number,
+    score:number,
+    tilesData:(number | null)[][],
+    tileNums:number
 }
 
 @ccclass('GameManage')
@@ -31,6 +34,13 @@ export class GameManage extends Component {
     @property(Prefab)
     Road:Prefab;
 
+    // 最高分
+    @property(Label)
+    BestScore:Label;
+    // 当前分
+    @property(Label)
+    Score:Label;
+
     private isGameStarting:boolean = false; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
     private posEnd:Vec2; // 结束点
@@ -41,7 +51,13 @@ export class GameManage extends Component {
     tileWidth:number; // 格子的宽度
     startPos:Vec3; // 起始点坐标
 
-    userInfoData:userInfo = {}; // 玩家数据
+    // 玩家数据
+    userInfoData:userInfo = {
+        bestScore: 0,
+        score: 0,
+        tilesData:[],
+        tileNums:4
+    }; 
 
     // 游戏开始时的回调
     start() {
@@ -54,6 +70,9 @@ export class GameManage extends Component {
     // 重新开始
     reStart(){
         localStorage.removeItem('userInfoData');
+
+        this.userInfoData.score = 0;
+        this.setScore();
         this.init();
     }
 
@@ -251,36 +270,14 @@ export class GameManage extends Component {
         }
     }
 
-    // 块移动
+    // 块移动 运算块合并后结果
     private tileMove(type:MoveDirect){
-        switch (type) {
-            case MoveDirect.LEFT:
-                console.log('left direction')
-                break;
-            case MoveDirect.RIGHT:
-                console.log('right direction')
-                break;
-            case MoveDirect.DOWN:
-                console.log('down direction')
-                break;
-            case MoveDirect.UP:
-                console.log('up direction')
-                break;
-            default:
-                break;
-        }
-        this.calculateTiles(type)
-    }
-
-    // 运算块合并后结果
-    private calculateTiles(type:MoveDirect){
         if(type === MoveDirect.LEFT){
             let isCreateTile = false; // 是否已经创建过块
-            let merged = [];
             // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
             for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
                 const rowData = this.tilesData[rowIdx];
-                merged.push(false);// 当前行元素是否已经进行过合并
+                let merged = new Array(this.tilesData.length).fill(false);// 当前行元素是否已经进行过合并
                 for (let colIdx = 0; colIdx < rowData.length; colIdx++) {
                     const curItem = this.tilesData[rowIdx][colIdx]; // 当前节点
                     const boundaryPos = 0; // 边界点
@@ -301,7 +298,9 @@ export class GameManage extends Component {
                                 break; // 找到后只确定一次
                             }
                         }
-                        let isMerge = endTileColIdx !== -1 && !merged[colIdx]; // 是否可以合并
+
+                        // 是否可以找到合并目标的下标 并且 当前位置并没有发生过合并
+                        let isMerge = endTileColIdx !== -1 && !merged[endTileColIdx]; // 是否可以合并
                         let isMove = endRoadColIdx !== -1; // 是否可以移动
                         if(isMerge || isMove){
                             // 目标点下标
@@ -313,6 +312,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
+                                    this.setScore();
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -327,6 +327,8 @@ export class GameManage extends Component {
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile)
                                 curTile.init(num);
+
+                                // 目标位置发生了合并
                                 merged[endColIdx] = true
                             }
                         }
@@ -335,12 +337,10 @@ export class GameManage extends Component {
             }
         }else if(type === MoveDirect.RIGHT){
             let isCreateTile = false; // 是否已经创建过块
-            let merged = [];
             // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
             for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
                 const rowData = this.tilesData[rowIdx];
-
-                merged.push(false);// 当前行元素是否已经进行过合并
+                let merged = new Array(this.tilesData.length).fill(false);// 当前行元素是否已经进行过合并
                 for (let colIdx = rowData.length - 1; colIdx >= 0; colIdx--) { // 从右开始计算*i顺序*
                     const curItem = this.tilesData[rowIdx][colIdx]; // 当前节点
                     const boundaryPos = this.tileNums; // 边界点
@@ -361,7 +361,7 @@ export class GameManage extends Component {
                                 break; // 找到后只确定一次
                             }
                         }
-                        let isMerge = endTileColIdx !== -1 && !merged[colIdx]; // 是否可以合并
+                        let isMerge = endTileColIdx !== -1 && !merged[endTileColIdx]; // 是否可以合并
                         let isMove = endRoadColIdx !== -1; // 是否可以移动
                         if(isMerge || isMove){
                             // 目标点下标
@@ -374,6 +374,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
+                                    this.setScore();
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -388,6 +389,7 @@ export class GameManage extends Component {
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile)
                                 curTile.init(num)
+                                // 目标位置发生了合并
                                 merged[endColIdx] = true
                             }
                         }
@@ -396,10 +398,9 @@ export class GameManage extends Component {
             }
         }else if(type === MoveDirect.DOWN){
             let isCreateTile = false; // 是否已经创建过块
-            let merged = [];
             // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
             for (let colIdx = 0; colIdx < this.tilesData[0].length; colIdx++) {
-                merged.push(false);// 当前行元素是否已经进行过合并
+                let merged = new Array(this.tilesData[0].length).fill(false);// 当前行元素是否已经进行过合并
                 for (let rowIdx = this.tilesData.length - 1; rowIdx >= 0; rowIdx--) { // 从右开始计算*i顺序*
 
                     // y行数是变化的 x列是不变的
@@ -424,7 +425,7 @@ export class GameManage extends Component {
                             }
                         }
 
-                        let isMerge = endTileRowIdx !== -1 && !merged[rowIdx]; // 是否可以合并
+                        let isMerge = endTileRowIdx !== -1 && !merged[endTileRowIdx]; // 是否可以合并
                         let isMove = endRoadRowIdx !== -1; // 是否可以移动
                         if(isMerge || isMove){
                             // 目标点下标
@@ -437,6 +438,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
+                                    this.setScore();
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -451,6 +453,7 @@ export class GameManage extends Component {
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile)
                                 curTile.init(num)
+                                // 目标位置发生了合并
                                 merged[endRowIdx] = true
                             }
                         }
@@ -459,10 +462,10 @@ export class GameManage extends Component {
             }
         }else if(type === MoveDirect.UP){
             let isCreateTile = false; // 是否已经创建过块
-            let merged = [];
+
             // rowIdx 代表的是y轴 ; colIdx 代表的是x轴
             for (let colIdx = 0; colIdx < this.tilesData[0].length; colIdx++) {
-                merged.push(false);// 当前行元素是否已经进行过合并
+                let merged = new Array(this.tilesData[0].length).fill(false);// 当前行元素是否已经进行过合并
                 for (let rowIdx = 0; rowIdx < this.tilesData.length ; rowIdx++) { // 从右开始计算 *i顺序*
 
                     // y行数是变化的 x列是不变的
@@ -487,7 +490,7 @@ export class GameManage extends Component {
                             }
                         }
 
-                        let isMerge = endTileRowIdx !== -1 && !merged[colIdx]; // 是否可以合并
+                        let isMerge = endTileRowIdx !== -1 && !merged[endTileRowIdx]; // 是否可以合并
                         let isMove = endRoadRowIdx !== -1; // 是否可以移动
                         if(isMerge || isMove){
                             // 目标点下标
@@ -501,6 +504,7 @@ export class GameManage extends Component {
                             this.tileMovePosition(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
+                                    this.setScore();
                                 }
                                 if(!isCreateTile){
                                     this.createTile();
@@ -515,6 +519,7 @@ export class GameManage extends Component {
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile);
                                 curTile.init(num);
+                                // 目标位置发生了合并
                                 merged[endRowIdx] = true;
                             }
                         }
@@ -540,5 +545,15 @@ export class GameManage extends Component {
         const x = this.startPos.x + this.tileWidth * curPos.x + this.tileMargin * curPos.x; // x起始点 + 块宽度 * x轴坐标(个数) + 间隔宽度 * x轴坐标(个数)
         const y = this.startPos.y - this.tileWidth * curPos.y - this.tileMargin * curPos.y; // y起始点 - 块宽度 * x轴坐标(个数) - 间隔宽度 * x轴坐标(个数)
         return new Vec3( x, y, 0 );
+    }
+
+    private setScore(){
+        this.userInfoData.score += 2;
+        this.Score.getComponent(Label).string = this.userInfoData.score.toString();
+
+        if(this.userInfoData.score > this.userInfoData.bestScore){
+            this.userInfoData.bestScore += 2;
+            this.BestScore.getComponent(Label).string = this.userInfoData.bestScore.toString()
+        }
     }
 }

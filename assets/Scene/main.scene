@@ -414,7 +414,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 260,
+      "x": 67.019,
       "y": 463.625,
       "z": 0
     },
@@ -745,7 +745,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 69.927,
+      "x": 259.611,
       "y": 463.625,
       "z": 0
     },
@@ -1931,6 +1931,12 @@
     "Road": {
       "__uuid__": "c224fca0-1709-4c7c-aef7-1285acf5318e",
       "__expectedType__": "cc.Prefab"
+    },
+    "BestScore": {
+      "__id__": 24
+    },
+    "Score": {
+      "__id__": 15
     },
     "_id": "f6pbgsHLxNTKdE980P9Ysa"
   },
