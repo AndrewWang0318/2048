@@ -101,8 +101,8 @@ export class GameManage extends Component {
         const tilesData:string | null = localStorage.getItem('tilesData');
         
         const powNum = this.tileNums - 3 + 10
-        this.GameTitle.string = (Math.pow(2,powNum)).toString()
-        this.GameRule.string = `Join the numbers \nto get to ${(Math.pow(2,powNum)).toString()}!` 
+        this.GameTitle.getComponent(Label).string = (Math.pow(2,powNum)).toString()
+        this.GameRule.getComponent(Label).string = `Join the numbers \nto get to ${(Math.pow(2,powNum)).toString()}!` 
 
         this.initTileMapData();
         this.renderTileMap();
@@ -663,8 +663,8 @@ export class GameManage extends Component {
 
         if(isOver){
             console.log('Game Over');
-            this.OverBestScore.string = this.userInfoData.bestScore.toString()
-            this.OverScore.string = this.userInfoData.score.toString()
+            this.OverBestScore.getComponent(Label).string = this.userInfoData.bestScore.toString()
+            this.OverScore.getComponent(Label).string = this.userInfoData.score.toString()
 
             this.isGameStarting = false;
             this.OverMenu.active = true;
