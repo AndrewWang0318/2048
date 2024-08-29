@@ -100,10 +100,10 @@ export class GameManage extends Component {
     init(){
         const tilesData:string | null = localStorage.getItem('tilesData');
         
-        const powNum = this.tileNums - 3 + 10
+        const powNum = this.tileNums - 3 + 10;
         this.GameTitle.getComponent(Label).string = (Math.pow(2,powNum)).toString()
         this.GameRule.getComponent(Label).string = `Join the numbers \nto get to ${(Math.pow(2,powNum)).toString()}!` 
-
+        
         this.initTileMapData();
         this.renderTileMap();
         if(tilesData === null){

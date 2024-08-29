@@ -1938,6 +1938,12 @@
       "__uuid__": "c224fca0-1709-4c7c-aef7-1285acf5318e",
       "__expectedType__": "cc.Prefab"
     },
+    "GameTitle": {
+      "__id__": 37
+    },
+    "GameRule": {
+      "__id__": 40
+    },
     "BestScore": {
       "__id__": 24
     },
