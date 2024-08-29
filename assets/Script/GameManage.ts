@@ -37,6 +37,13 @@ export class GameManage extends Component {
     @property(Prefab)
     Road:Prefab;
 
+    // 游戏标题
+    @property(Label)
+    GameTitle:Label;
+    // 游戏规则
+    @property(Label)
+    GameRule:Label;
+
     // 最高分
     @property(Label)
     BestScore:Label;
@@ -91,7 +98,12 @@ export class GameManage extends Component {
 
     // 初始化
     init(){
-        const tilesData:string | null = localStorage.getItem('tilesData')
+        const tilesData:string | null = localStorage.getItem('tilesData');
+        
+        const powNum = this.tileNums - 3 + 10
+        this.GameTitle.string = (Math.pow(2,powNum)).toString()
+        this.GameRule.string = `Join the numbers \nto get to ${(Math.pow(2,powNum)).toString()}!` 
+
         this.initTileMapData();
         this.renderTileMap();
         if(tilesData === null){
@@ -224,9 +236,10 @@ export class GameManage extends Component {
 
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
-        // this.tileNums = customEventData;
-        // this.init();
+        this.tileNums = Number(customEventData);
+        
         this.SettingMenu.active = false;
+        this.init();
     }
 
     // 返回游戏
@@ -285,8 +298,6 @@ export class GameManage extends Component {
 
     // 块移动 运算块合并后结果
     private tileMove(type:MoveDirect){
-
-        
 
         if(type === MoveDirect.LEFT){
             let isCreateTile = false; // 是否已经创建过块
