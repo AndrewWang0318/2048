@@ -219,6 +219,13 @@ export class GameManage extends Component {
 
     // 保存历史数据
     saveStorage(){
+        const tilesData = this.tilesData.map( arr => {
+            return arr.map( node => node ? +node.getComponent(Tile).TileLable.string : null )
+        })
+
+
+        console.log(tilesData)
+
         const userInfoData = JSON.stringify(this.userInfoData)
         localStorage.setItem('userInfoData',userInfoData)
     }
@@ -562,6 +569,7 @@ export class GameManage extends Component {
                 }
             }
         }
+        // 保存游戏记录
         // this.saveStorage();
 
         // 先判断游戏是否结束
@@ -571,7 +579,7 @@ export class GameManage extends Component {
     // 块移动动画
     private playTileMoveAnime(tile:Node,tarPos:Vec3,callback?:Function){
         tween(tile)
-        .to(0.1, { position:tarPos }, { easing: 'sineInOut' })
+        .to(0.1, { position:tarPos }, { easing: 'sineIn' })
         .call(callback)
         .start();
     }
