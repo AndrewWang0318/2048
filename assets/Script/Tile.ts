@@ -11,7 +11,7 @@ export class Tile extends Component {
 
     public init(num: number) {
         this.TileLable.string = num.toString()
-        this.setColor3(num)
+        this.setColor1(num)
     }
 
     public setColor1(tag) {
@@ -54,49 +54,7 @@ export class Tile extends Component {
                 break;
         }
     }
-
     public setColor2(tag) {
-        switch (tag) {
-            case Math.pow(2, 1):
-                this.TileBg.color = new Color(255, 255, 143); // 2, 浅黄色
-                break;
-            case Math.pow(2, 2):
-                this.TileBg.color = new Color(255, 204, 102); // 4, 橙色
-                break;
-            case Math.pow(2, 3):
-                this.TileBg.color = new Color(255, 153, 102); // 8, 浅红橙色
-                break;
-            case Math.pow(2, 4):
-                this.TileBg.color = new Color(255, 102, 102); // 16, 红色
-                break;
-            case Math.pow(2, 5):
-                this.TileBg.color = new Color(255, 102, 204); // 32, 粉红色
-                break;
-            case Math.pow(2, 6):
-                this.TileBg.color = new Color(204, 102, 255); // 64, 紫色
-                break;
-            case Math.pow(2, 7):
-                this.TileBg.color = new Color(153, 102, 255); // 128, 深紫色
-                break;
-            case Math.pow(2, 8):
-                this.TileBg.color = new Color(102, 153, 255); // 256, 浅蓝色
-                break;
-            case Math.pow(2, 9):
-                this.TileBg.color = new Color(102, 204, 255); // 512, 蓝色
-                break;
-            case Math.pow(2, 10): // 1024
-                this.TileBg.color = new Color(102, 255, 204); // 青色
-                break;
-            case Math.pow(2, 11): // 2048
-                this.TileBg.color = new Color(102, 255, 153); // 绿色
-                break;
-            default:
-                this.TileBg.color = new Color(0, 153, 153); // 超过2048, 深绿色
-                break;
-        }
-    }
-
-    public setColor3(tag) {
         switch (tag) {
             case Math.pow(2, 1):
                 this.TileBg.color = new Color(245, 245, 220); // 2, 米色

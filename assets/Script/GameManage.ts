@@ -9,6 +9,12 @@ enum MoveDirect {
     DOWN
 }
 
+enum AudioType {
+    MERGE,
+    MOVE,
+    OVER
+}
+
 type userInfo  = {
     bestScore:number,
     score:number,
@@ -682,5 +688,13 @@ export class GameManage extends Component {
             .to(0.6,{ scale:v3(1,1,1) },{ easing:'sineInOut' })
             .start()
         }
+    }
+
+    // 播放音频
+    private playAudio(type:AudioType){
+        
+        
+
+
     }
 }
