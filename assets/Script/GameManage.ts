@@ -9,12 +9,6 @@ enum MoveDirect {
     DOWN
 }
 
-enum AudioType {
-    MERGE,
-    MOVE,
-    OVER
-}
-
 type userInfo  = {
     bestScore:number,
     score:number,
@@ -70,8 +64,9 @@ export class GameManage extends Component {
     @property(AudioClip)
     SoundMerge:AudioClip;
 
-    private audioManage:AudioSource;
-    private audio
+    private isUseStorage:boolean = false; // 是否使用历史记录
+
+    private audioManage:AudioSource; // 音频管理
 
     private isGameStarting:boolean = false; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
@@ -94,6 +89,10 @@ export class GameManage extends Component {
     // 游戏开始时的回调
     start() {
         this.addEventListener();
+
+        this.audioManage = new AudioSource()
+        this.audioManage.volume = ( 1 / 100 ) * 1;
+
         this.StartMenu.active = true;
         this.SettingMenu.active = false;
         this.OverMenu.active = false;
@@ -104,25 +103,30 @@ export class GameManage extends Component {
     reStart(){
         this.isGameStarting = true;
         this.OverMenu.active = false;
-        localStorage.removeItem('userInfoData');
-        this.userInfoData.score = 0;
-        this.Score.getComponent(Label).string = this.userInfoData.score.toString();
-        
+        this.resetStorage();
+
         this.init();
     }
 
     // 初始化
     init(){
-        this.audioManage = new AudioSource()
-        this.audioManage.volume = ( 1 / 100 ) * 1;
-
         const powNum = 10 + this.tileNums - 3;
         this.GameTitle.getComponent(Label).string = (Math.pow(2,powNum)).toString()
         this.GameRule.getComponent(Label).string = `Join the numbers \nto get to ${(Math.pow(2,powNum)).toString()}!` 
         
-        this.initTileMapData();
-        this.renderTileMap();
-        this.createTile();
+        // 使用历史记录
+        const userInfoDataLocal:string = localStorage.getItem('userInfoData');
+        const userInfoData:userInfo | null = userInfoDataLocal ? JSON.parse(userInfoDataLocal) : null
+        
+        if(this.isUseStorage && userInfoData && userInfoData.tilesData.length > 0){
+            this.useStorage();
+            this.renderTileMap();
+        }else{
+            this.initTileMapData();
+            this.renderTileMap();
+            const roadPos = this.createTile();
+            this.renderTile(roadPos)
+        }
     }
     
     // 初始化块地图数据
@@ -152,25 +156,31 @@ export class GameManage extends Component {
         // x 轴对比 原中心点 为 -( 地图宽的一半 + 块宽的一半 + 间隔 )
         // y 轴对比 原中心点 为 +( 地图宽的一半 - 块宽的一半 - 间隔 )
         this.startPos = new Vec3( offsetX, offsetY, 0);
-        // 初始化
+        // 初始化Road
         for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
-            const array = this.tilesData[rowIdx];
-            for (let colIdx = 0; colIdx < array.length; colIdx++) {
+            for (let colIdx = 0; colIdx < this.tilesData[rowIdx].length; colIdx++) {
+                const curPos = new Vec3(colIdx,rowIdx,0)
+                this.createRoad(curPos);   
+            }
+        }
+        // 初始化Tile
+        for (let rowIdx = 0; rowIdx < this.tilesData.length; rowIdx++) {
+            for (let colIdx = 0; colIdx < this.tilesData[rowIdx].length; colIdx++) {
                 const curPos = new Vec3(colIdx,rowIdx,0)
                 const curItem = this.tilesData[curPos.y][curPos.x];
-                this.createRoad(curPos);
                 // 不为null的情况下
                 if(curItem !== null){
-                    // const curNum = Number(curItem.getComponent(Tile).TileLable.string);
                     const curNum = Number(curItem);
-                    this.createTile(false,false,curNum,curPos);
+                    const roadPos = this.createTile(false,curNum,curPos);
+                    this.renderTile(roadPos)
                 }
             }
         }
+        
     }
     
     // 生成 块
-    createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
+    createTile(isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
         const randomNum = Math.floor(Math.random() * 3) === 0 ? 4 : 2; // 3/1的几率生成一个更大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
         const roadArr = []; // 空白块的下标
@@ -187,12 +197,17 @@ export class GameManage extends Component {
         const roadPos = isRandom ? roadArr[roadIdx] : curPos; // 随机的空白块的坐标
        
         const node = instantiate(this.Tile);
-        const tile =  node.getComponent(Tile)
+        const tile = node.getComponent(Tile)
         tile.init(num)
 
         this.tilesData[roadPos.y][roadPos.x] = node; // 将目标的空白块重新赋值
 
-
+        return roadPos
+    }
+    
+    // 渲染 块
+    renderTile(roadPos:Vec3,isAnimated: true | false = true){
+        const node = this.tilesData[roadPos.y][roadPos.x];
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
@@ -200,21 +215,12 @@ export class GameManage extends Component {
         const tilePos = this.getRealPosition(roadPos);
         node.position = tilePos;
         node.parent = this.TileMap;
-
         // 播放动画
         if(isAnimated){
             node.scale = v3(0.5,0.5,0.5);
             tween(node).to(0.1,{ scale:v3(1,1,1) }, { easing:'sineInOut' }).start();
         }
     }
-    
-    // 播放生成块动画
-    playCreateTileAnime(node:Node,isAnimated: true | false = true,){
-
-    }
-
-
-
 
     // 生成 空白块
     createRoad(curPos:Vec3){
@@ -241,6 +247,7 @@ export class GameManage extends Component {
 
     // 切换游戏类型
     changeGameType(evt:EventTouch,customEventData:number){
+        this.userInfoData.tileNums = Number(customEventData);
         this.tileNums = Number(customEventData);
         
         this.SettingMenu.active = false;
@@ -332,33 +339,34 @@ export class GameManage extends Component {
                         // 是否可以找到合并目标的下标 并且 当前位置并没有发生过合并
                         let isMerge = endTileColIdx !== -1 && !merged[endTileColIdx]; // 当前元素是否可以合并
                         let isMove = endRoadColIdx !== -1; // 当前元素是否可以移动
-                        if(isMerge){
-                            isMerged = true
-                        }
-                        if(isMove){
-                            isMoved = true
-                        }
+                        if(isMerge) isMerged = true;
+                        if(isMove) isMoved = true;
                         if(isMerge || isMove){
                             // 目标点下标
                             const endColIdx = isMerge ? endTileColIdx : endRoadColIdx
                             const tarTilePos = new Vec3(endColIdx,rowIdx,0);// 目标 块 坐标
                             const movePos = this.getRealPosition(tarTilePos); // 目标点真实坐标
                             const tarItem = this.tilesData[rowIdx][endColIdx];
+
                             // 动画执行完毕后 删除目标元素 然后再生成新的元素
+                            
                             this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
-                                    this.createTile();
+                                    const roadPos = this.createTile();
+                                    this.renderTile(roadPos)
                                     isCreateTile = true;
                                 }
                             });
+                            
                             // 移动完成后需要更改其位置
                             this.tilesData[rowIdx][endColIdx] = curItem;
                             this.tilesData[rowIdx][colIdx] = null;
                             if(isMerge){
+                                // 计算得分
+                                this.setScore(curNum);
                                 // 合并元素(当前元素数值 x 2)
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile)
@@ -366,7 +374,7 @@ export class GameManage extends Component {
                                 // 目标位置发生了合并
                                 merged[endColIdx] = true
                                 // 播放合成后动画
-                                this.playMergeAnime(curItem);
+                                this.playTileMergeAnime(curItem);
                             }
                         }
                     }
@@ -407,21 +415,22 @@ export class GameManage extends Component {
                             this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
-                                    this.createTile();
+                                    const roadPos = this.createTile();
+                                    this.renderTile(roadPos)
                                     isCreateTile = true;
                                 }
                             });
                             this.tilesData[rowIdx][endColIdx] = curItem;
                             this.tilesData[rowIdx][colIdx] = null;
                             if(isMerge){
+                                this.setScore(curNum);
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile)
                                 curTile.init(num)
                                 merged[endColIdx] = true
-                                this.playMergeAnime(curItem);
+                                this.playTileMergeAnime(curItem);
                             }
                         }
                     }
@@ -467,14 +476,15 @@ export class GameManage extends Component {
 
                             const movePos = this.getRealPosition(tarTilePos); // 目标点真实坐标
                             const tarItem = this.tilesData[endRowIdx][colIdx]
+                            
                             // 动画执行完毕后 删除目标元素 然后再生成新的元素
                             this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
-                                    this.createTile();
+                                    const roadPos = this.createTile();
+                                    this.renderTile(roadPos)
                                     isCreateTile = true;
                                 }
                             });
@@ -482,6 +492,7 @@ export class GameManage extends Component {
                             this.tilesData[endRowIdx][colIdx] = curItem;
                             this.tilesData[rowIdx][colIdx] = null;
                             if(isMerge){
+                                this.setScore(curNum);
                                 // 合并元素(当前元素数值 x 2)
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile);
@@ -489,7 +500,7 @@ export class GameManage extends Component {
                                 // 目标位置发生了合并
                                 merged[endRowIdx] = true;
 
-                                this.playMergeAnime(curItem);
+                                this.playTileMergeAnime(curItem);
                             }
                         }
                     }
@@ -536,17 +547,20 @@ export class GameManage extends Component {
                             this.playTileMoveAnime(curItem,movePos,()=> {
                                 if(isMerge){
                                     tarItem.destroy();
-                                    this.setScore(curNum);
                                 }
                                 if(!isCreateTile){
-                                    this.createTile();
+                                    const roadPos = this.createTile();
+                                    this.renderTile(roadPos)
                                     isCreateTile = true;
                                 }
                             });
+
                             // 移动完成后需要更改其位置
                             this.tilesData[endRowIdx][colIdx] = curItem;
                             this.tilesData[rowIdx][colIdx] = null;
                             if(isMerge){
+                                // 计算得分
+                                this.setScore(curNum);
                                 // 合并元素(当前元素数值 x 2)
                                 const num = curNum * 2
                                 const curTile = curItem.getComponent(Tile)
@@ -554,19 +568,27 @@ export class GameManage extends Component {
                                 // 目标位置发生了合并
                                 merged[endRowIdx] = true
 
-                                this.playMergeAnime(curItem);
+                                this.playTileMergeAnime(curItem);
                             }
                         }
                     }
                 }
             }
         }
-
-        
-        // 播放音频
-        this.playSound(isMerged ? this.SoundMerge : this.SoundMove);
+        if(isMerged){
+            // 播放音频
+            this.playSound(this.SoundMerge);
+        }else if(isMoved){
+            // 播放音频
+            this.playSound(this.SoundMove);
+        }
         // 保存游戏记录
-        // this.saveStorage();
+        if(this.isUseStorage){
+            // 存在一个合成动画的延时，所以延迟500ms保存
+            setTimeout(()=>{
+                this.saveStorage();
+            },500)
+        }
         // 先判断游戏是否结束
         this.isGameOver();
     }
@@ -580,7 +602,7 @@ export class GameManage extends Component {
     }
 
     // 块合成动画
-    private playMergeAnime( node:Node ){
+    private playTileMergeAnime( node:Node ){
         tween(node)
         .to(0.1, { scale: new Vec3(0.9, 0.9, 1) }, { easing: 'quadIn' })
         .to(0.15, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
@@ -694,6 +716,16 @@ export class GameManage extends Component {
         localStorage.setItem('userInfoData',userInfoData)
     }
 
+    // 重置历史记录
+    resetStorage(){
+        this.userInfoData.score = 0;
+        this.userInfoData.tilesData = [];
+        this.Score.getComponent(Label).string = "0";
+
+        const userInfoData = JSON.stringify(this.userInfoData)
+        localStorage.setItem('userInfoData',userInfoData)
+    }
+
     // 使用历史数据
     useStorage(){
         const userInfoDataLocal:string = localStorage.getItem('userInfoData');
@@ -707,6 +739,7 @@ export class GameManage extends Component {
 
     // 删除历史数据
     removeStorage(){
+        
         localStorage.removeItem('userInfoData');
     }
 }
