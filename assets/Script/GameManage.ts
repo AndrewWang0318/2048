@@ -124,8 +124,8 @@ export class GameManage extends Component {
         }else{
             this.initTileMapData();
             this.renderTileMap();
-            const roadPos = this.createTile();
-            this.renderTile(roadPos)
+            this.createTile();
+            
         }
     }
     
@@ -171,8 +171,8 @@ export class GameManage extends Component {
                 // 不为null的情况下
                 if(curItem !== null){
                     const curNum = Number(curItem);
-                    const roadPos = this.createTile(false,curNum,curPos);
-                    this.renderTile(roadPos)
+                    this.createTile(false,false,curNum,curPos);
+                    
                 }
             }
         }
@@ -180,7 +180,7 @@ export class GameManage extends Component {
     }
     
     // 生成 块
-    createTile(isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
+    createTile(isAnimated:boolean = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
         const randomNum = Math.floor(Math.random() * 3) === 0 ? 4 : 2; // 3/1的几率生成一个更大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
         const roadArr = []; // 空白块的下标
@@ -202,12 +202,6 @@ export class GameManage extends Component {
 
         this.tilesData[roadPos.y][roadPos.x] = node; // 将目标的空白块重新赋值
 
-        return roadPos
-    }
-    
-    // 渲染 块
-    renderTile(roadPos:Vec3,isAnimated: true | false = true){
-        const node = this.tilesData[roadPos.y][roadPos.x];
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
@@ -249,8 +243,8 @@ export class GameManage extends Component {
     changeGameType(evt:EventTouch,customEventData:number){
         this.userInfoData.tileNums = Number(customEventData);
         this.tileNums = Number(customEventData);
-        
         this.SettingMenu.active = false;
+        this.resetStorage();
         this.init();
     }
 
@@ -355,8 +349,7 @@ export class GameManage extends Component {
                                     tarItem.destroy();
                                 }
                                 if(!isCreateTile){
-                                    const roadPos = this.createTile();
-                                    this.renderTile(roadPos)
+                                    this.createTile();
                                     isCreateTile = true;
                                 }
                             });
@@ -417,8 +410,7 @@ export class GameManage extends Component {
                                     tarItem.destroy();
                                 }
                                 if(!isCreateTile){
-                                    const roadPos = this.createTile();
-                                    this.renderTile(roadPos)
+                                    this.createTile();
                                     isCreateTile = true;
                                 }
                             });
@@ -483,8 +475,7 @@ export class GameManage extends Component {
                                     tarItem.destroy();
                                 }
                                 if(!isCreateTile){
-                                    const roadPos = this.createTile();
-                                    this.renderTile(roadPos)
+                                    this.createTile();
                                     isCreateTile = true;
                                 }
                             });
@@ -549,8 +540,7 @@ export class GameManage extends Component {
                                     tarItem.destroy();
                                 }
                                 if(!isCreateTile){
-                                    const roadPos = this.createTile();
-                                    this.renderTile(roadPos)
+                                    this.createTile();
                                     isCreateTile = true;
                                 }
                             });
