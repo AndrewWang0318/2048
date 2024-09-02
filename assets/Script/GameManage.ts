@@ -64,13 +64,15 @@ export class GameManage extends Component {
     @property(Label)
     OverBestScore:Label;
 
+    // 音频资源
     @property(AudioClip)
     SoundMove:AudioClip;
     @property(AudioClip)
     SoundMerge:AudioClip;
 
-    audioManage:AudioSource = new AudioSource();
-    
+    private audioManage:AudioSource;
+    private audio
+
     private isGameStarting:boolean = false; // 游戏是否已经开始
     private posStart:Vec2; // 起始点
     private posEnd:Vec2; // 结束点
@@ -111,6 +113,9 @@ export class GameManage extends Component {
 
     // 初始化
     init(){
+        this.audioManage = new AudioSource()
+        this.audioManage.volume = ( 1 / 100 ) * 1;
+
         const powNum = 10 + this.tileNums - 3;
         this.GameTitle.getComponent(Label).string = (Math.pow(2,powNum)).toString()
         this.GameRule.getComponent(Label).string = `Join the numbers \nto get to ${(Math.pow(2,powNum)).toString()}!` 
@@ -163,14 +168,8 @@ export class GameManage extends Component {
             }
         }
     }
-
-    /**
-     * 创建一个新的块(tile)。
-     *
-     * @param {boolean} isAnimated - 指定是否为新创建的块添加动画效果。默认为 `false`，如果设置为 `true`，则在创建块时应用动画。
-     * @param {boolean} isRandom - 指定块的生成是否为随机位置。默认为 `true`，如果设置为 `false`，则使用指定的生成位置。
-     * @param {number} curNum - 当前块的编号或标识，用于区分或跟踪块的状态。
-     */
+    
+    // 生成 块
     createTile(isAnimated: true | false = true,isRandom: true | false = true, curNum?: number, curPos?:Vec3 ){
         const randomNum = Math.floor(Math.random() * 3) === 0 ? 4 : 2; // 3/1的几率生成一个更大的数字
         const num = isRandom ? randomNum: curNum; // 生成的数字大小
@@ -193,6 +192,7 @@ export class GameManage extends Component {
 
         this.tilesData[roadPos.y][roadPos.x] = node; // 将目标的空白块重新赋值
 
+
         const tileUI:UITransform = node.getComponent(UITransform);
         tileUI.width = this.tileWidth;
         tileUI.height = this.tileWidth;
@@ -208,6 +208,14 @@ export class GameManage extends Component {
         }
     }
     
+    // 播放生成块动画
+    playCreateTileAnime(node:Node,isAnimated: true | false = true,){
+
+    }
+
+
+
+
     // 生成 空白块
     createRoad(curPos:Vec3){
         const node = instantiate(this.Road);
@@ -358,7 +366,7 @@ export class GameManage extends Component {
                                 // 目标位置发生了合并
                                 merged[endColIdx] = true
                                 // 播放合成后动画
-                                this.playBounceAnime(curItem);
+                                this.playMergeAnime(curItem);
                             }
                         }
                     }
@@ -413,7 +421,7 @@ export class GameManage extends Component {
                                 const curTile = curItem.getComponent(Tile)
                                 curTile.init(num)
                                 merged[endColIdx] = true
-                                this.playBounceAnime(curItem);
+                                this.playMergeAnime(curItem);
                             }
                         }
                     }
@@ -481,7 +489,7 @@ export class GameManage extends Component {
                                 // 目标位置发生了合并
                                 merged[endRowIdx] = true;
 
-                                this.playBounceAnime(curItem);
+                                this.playMergeAnime(curItem);
                             }
                         }
                     }
@@ -546,19 +554,17 @@ export class GameManage extends Component {
                                 // 目标位置发生了合并
                                 merged[endRowIdx] = true
 
-                                this.playBounceAnime(curItem);
+                                this.playMergeAnime(curItem);
                             }
                         }
                     }
                 }
             }
         }
+
+        
         // 播放音频
-        if(isMerged){
-            this.audioManage.playOneShot(this.SoundMerge)
-        }else if(isMoved){
-            this.audioManage.playOneShot(this.SoundMove)
-        }
+        this.playSound(isMerged ? this.SoundMerge : this.SoundMove);
         // 保存游戏记录
         // this.saveStorage();
         // 先判断游戏是否结束
@@ -573,7 +579,8 @@ export class GameManage extends Component {
         .start();
     }
 
-    private playBounceAnime( node:Node ){
+    // 块合成动画
+    private playMergeAnime( node:Node ){
         tween(node)
         .to(0.1, { scale: new Vec3(0.9, 0.9, 1) }, { easing: 'quadIn' })
         .to(0.15, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
@@ -671,6 +678,10 @@ export class GameManage extends Component {
             .to(0.6,{ scale:v3(1,1,1) },{ easing:'sineInOut' })
             .start()
         }
+    }
+
+    playSound(audio:AudioClip){
+        this.audioManage.playOneShot(audio) 
     }
 
     // 保存历史数据
