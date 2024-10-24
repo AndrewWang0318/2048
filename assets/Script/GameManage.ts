@@ -213,9 +213,6 @@ export class GameManage extends Component {
 
     }
 
-
-
-
     // 生成 空白块
     createRoad(curPos:Vec3){
         const node = instantiate(this.Road);
